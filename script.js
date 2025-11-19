@@ -131,4 +131,114 @@ document.addEventListener('DOMContentLoaded', () => {
     
     floatShape();
   });
+
+  // Arrow button click handler - resize and reposition to bottom left
+  const arrowBtn = document.querySelector('.arrow-btn');
+  let hasMoved = false;
+
+  arrowBtn.addEventListener('click', () => {
+    if (hasMoved) return; // One-way transition, don't move back
+    
+    hasMoved = true;
+    const margin = 20;
+    const halfWidth = (window.innerWidth / 2) - (margin * 2);
+
+    // Get current computed positions
+    const centralTextRect = centralText.getBoundingClientRect();
+    const inputContainerRect = inputContainer.getBoundingClientRect();
+    
+    // Calculate final positions in pixels
+    const finalCentralTextLeft = margin;
+    const finalCentralTextTop = window.innerHeight - (margin + 250) - centralTextRect.height;
+    const finalInputLeft = margin;
+    // Position input container just below the central text with some spacing
+    const spacing = 20;
+    const finalInputTop = finalCentralTextTop + centralTextRect.height + spacing;
+    
+    // Calculate deltas from current position
+    const centralTextDeltaX = finalCentralTextLeft - centralTextRect.left;
+    const centralTextDeltaY = finalCentralTextTop - centralTextRect.top;
+    const inputDeltaX = finalInputLeft - inputContainerRect.left;
+    const inputDeltaY = finalInputTop - inputContainerRect.top;
+
+    // Cache center positions to avoid recalculation
+    const centerX = window.innerWidth / 2;
+    const centerYCentral = window.innerHeight * 0.45;
+    const centerYInput = window.innerHeight * 0.55;
+
+    // Set will-change for better performance and force GPU acceleration
+    centralText.style.willChange = 'transform';
+    centralText.style.backfaceVisibility = 'hidden';
+    inputContainer.style.willChange = 'transform, width, height';
+    inputContainer.style.backfaceVisibility = 'hidden';
+
+    // Get current height and calculate target height (increase by 50%)
+    const currentHeight = inputContainerRect.height;
+    const targetHeight = currentHeight * 1.5; // Increase height by 50%
+
+    // Use dummy objects to avoid conflicts with existing transforms
+    const centralTextAnim = { offsetX: 0, offsetY: 0 };
+    const inputContainerAnim = { offsetX: 0, offsetY: 0, w: inputContainerRect.width, h: currentHeight };
+
+    // Animate central text
+    anime({
+      targets: centralTextAnim,
+      offsetX: [0, centralTextDeltaX],
+      offsetY: [0, centralTextDeltaY],
+      duration: 600,
+      easing: 'easeOutCubic',
+      update: function() {
+        // Only update transform during animation to avoid layout recalculations
+        const offsetX = centralTextAnim.offsetX;
+        const offsetY = centralTextAnim.offsetY;
+        // Calculate translate from the -50% center position
+        centralText.style.transform = `translate3d(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px), 0)`;
+      },
+      complete: function() {
+        // Set final position
+        centralText.style.top = finalCentralTextTop + 'px';
+        centralText.style.left = finalCentralTextLeft + 'px';
+        centralText.style.transform = 'translate3d(0, 0, 0)';
+        centralText.style.textAlign = 'left';
+        centralText.style.willChange = 'auto';
+        centralText.style.backfaceVisibility = '';
+      }
+    });
+
+    // Animate input container - increase height and position below text
+    anime({
+      targets: inputContainerAnim,
+      offsetX: [0, inputDeltaX],
+      offsetY: [0, inputDeltaY],
+      w: [inputContainerRect.width, halfWidth],
+      h: [currentHeight, targetHeight], // Increase height
+      duration: 600,
+      easing: 'easeOutCubic',
+      update: function() {
+        // Only update transform, width, and height during animation
+        const offsetX = inputContainerAnim.offsetX;
+        const offsetY = inputContainerAnim.offsetY;
+        const w = inputContainerAnim.w;
+        const h = inputContainerAnim.h;
+        inputContainer.style.width = w + 'px';
+        inputContainer.style.height = h + 'px';
+        inputContainer.style.transform = `translate3d(calc(-50% + ${offsetX}px), ${offsetY}px, 0)`;
+      },
+      complete: function() {
+        // Set final position with increased height
+        // Calculate top position to ensure bottom margin: window height - bottom margin - container height
+        const finalTopWithBottomMargin = window.innerHeight - margin - targetHeight;
+        // Use the lower of: below text position OR position that gives bottom margin
+        const finalTop = Math.max(finalInputTop, finalTopWithBottomMargin)-50;
+        
+        inputContainer.style.top = finalTop + 'px';
+        inputContainer.style.left = finalInputLeft + 'px';
+        inputContainer.style.transform = 'translate3d(0, 0, 0)';
+        inputContainer.style.width = halfWidth + 'px';
+        inputContainer.style.height = targetHeight + 'px';
+        inputContainer.style.willChange = 'auto';
+        inputContainer.style.backfaceVisibility = '';
+      }
+    });
+  });
 });
