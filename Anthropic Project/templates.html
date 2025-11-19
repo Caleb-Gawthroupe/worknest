@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates - Worksheet Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        .template-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-8px) rotateX(2deg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .filter-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .search-input {
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2);
+        }
+        
+        .category-badge {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        .math-badge {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        .science-badge {
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+        }
+        
+        .english-badge {
+            background: linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%);
+        }
+        
+        .history-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+        }
+        
+        .modal-content {
+            animation: modalSlideIn 0.3s ease forwards;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-amber-400 to-emerald-500 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">WC</span>
+                    </div>
+                    <span class="text-xl font-bold text-slate-800">Worksheet Creator</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="text-slate-600 hover:text-slate-900 transition-colors">Dashboard</a>
+                    <a href="#" class="text-slate-600 hover:text-slate-900 transition-colors font-medium">Templates</a>
+                    <a href="#" class="text-slate-600 hover:text-slate-900 transition-colors">My Worksheets</a>
+                    <button class="bg-gradient-to-r from-amber-500 to-emerald-500 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <section class="pt-24 pb-12 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                Worksheet Templates
+            </h1>
+            <p class="text-xl text-slate-300 max-w-3xl mx-auto mb-8">
+                Choose from hundreds of professionally designed worksheet templates 
+                for every subject and grade level.
+            </p>
+            
+            <!-- Search Bar -->
+            <div class="max-w-2xl mx-auto">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="searchInput"
+                        placeholder="Search templates..."
+                        class="w-full px-6 py-4 pl-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-slate-300 search-input focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        oninput="filterTemplates()"
+                    >
+                    <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filter Section -->
+    <section class="py-8 bg-white border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- Subject Filters -->
+                <div class="flex flex-wrap gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-lg font-medium text-sm border border-slate-200" onclick="filterBySubject('all')">
+                        All Subjects
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-lg font-medium text-sm border border-slate-200" onclick="filterBySubject('math')">
+                        Mathematics
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-lg font-medium text-sm border border-slate-200" onclick="filterBySubject('science')">
+                        Science
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-lg font-medium text-sm border border-slate-200" onclick="filterBySubject('english')">
+                        English
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-lg font-medium text-sm border border-slate-200" onclick="filterBySubject('history')">
+                        History
+                    </button>
+                </div>
+
+                <!-- Grade Level Filter -->
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-slate-700">Grade Level:</label>
+                    <select id="gradeFilter" class="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" onchange="filterTemplates()">
+                        <option value="all">All Grades</option>
+                        <option value="K">Kindergarten</option>
+                        <option value="1-3">Elementary (1-3)</option>
+                        <option value="4-5">Elementary (4-5)</option>
+                        <option value="6-8">Middle School</option>
+                        <option value="9-12">High School</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Templates Grid -->
+    <section class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="templatesGrid">
+                
+                <!-- Math Templates -->
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="math" data-grade="6-8" onclick="openTemplateModal('algebra-basic')">
+                    <img src="resources/template-math.jpg" alt="Basic Algebra" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="math-badge text-white px-2 py-1 rounded-full text-xs font-medium">Mathematics</span>
+                            <span class="text-xs text-slate-500">Grades 6-8</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Basic Algebra</h3>
+                        <p class="text-slate-600 text-sm mb-4">Introduction to algebraic equations and variables with step-by-step examples.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">15 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="math" data-grade="9-12" onclick="openTemplateModal('geometry-advanced')">
+                    <img src="resources/template-math.jpg" alt="Advanced Geometry" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="math-badge text-white px-2 py-1 rounded-full text-xs font-medium">Mathematics</span>
+                            <span class="text-xs text-slate-500">Grades 9-12</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Advanced Geometry</h3>
+                        <p class="text-slate-600 text-sm mb-4">Complex geometric proofs and three-dimensional figures.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">20 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="math" data-grade="4-5" onclick="openTemplateModal('fractions')">
+                    <img src="resources/template-math.jpg" alt="Fractions & Decimals" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="math-badge text-white px-2 py-1 rounded-full text-xs font-medium">Mathematics</span>
+                            <span class="text-xs text-slate-500">Grades 4-5</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Fractions & Decimals</h3>
+                        <p class="text-slate-600 text-sm mb-4">Visual representations and operations with fractions and decimals.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">18 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="math" data-grade="1-3" onclick="openTemplateModal('addition-subtraction')">
+                    <img src="resources/template-math.jpg" alt="Addition & Subtraction" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="math-badge text-white px-2 py-1 rounded-full text-xs font-medium">Mathematics</span>
+                            <span class="text-xs text-slate-500">Grades 1-3</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Addition & Subtraction</h3>
+                        <p class="text-slate-600 text-sm mb-4">Basic arithmetic with visual aids and number lines.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">25 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Science Templates -->
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="science" data-grade="6-8" onclick="openTemplateModal('chemistry-basics')">
+                    <img src="resources/template-science.jpg" alt="Chemistry Basics" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="science-badge text-white px-2 py-1 rounded-full text-xs font-medium">Science</span>
+                            <span class="text-xs text-slate-500">Grades 6-8</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Chemistry Basics</h3>
+                        <p class="text-slate-600 text-sm mb-4">Periodic table, elements, and basic chemical reactions.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">16 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="science" data-grade="9-12" onclick="openTemplateModal('physics-mechanics')">
+                    <img src="resources/template-science.jpg" alt="Physics Mechanics" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="science-badge text-white px-2 py-1 rounded-full text-xs font-medium">Science</span>
+                            <span class="text-xs text-slate-500">Grades 9-12</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Physics: Mechanics</h3>
+                        <p class="text-slate-600 text-sm mb-4">Newton's laws, forces, and motion calculations.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">12 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="science" data-grade="4-5" onclick="openTemplateModal('biology-cells')">
+                    <img src="resources/template-science.jpg" alt="Cell Biology" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="science-badge text-white px-2 py-1 rounded-full text-xs font-medium">Science</span>
+                            <span class="text-xs text-slate-500">Grades 4-5</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Cell Biology</h3>
+                        <p class="text-slate-600 text-sm mb-4">Plant and animal cells, organelles, and cell functions.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">14 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="science" data-grade="K" onclick="openTemplateModal('weather-seasons')">
+                    <img src="resources/template-science.jpg" alt="Weather & Seasons" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="science-badge text-white px-2 py-1 rounded-full text-xs font-medium">Science</span>
+                            <span class="text-xs text-slate-500">Kindergarten</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Weather & Seasons</h3>
+                        <p class="text-slate-600 text-sm mb-4">Basic weather patterns and seasonal changes.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">10 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- English Templates -->
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="english" data-grade="6-8" onclick="openTemplateModal('reading-comprehension')">
+                    <img src="resources/template-english.jpg" alt="Reading Comprehension" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="english-badge text-white px-2 py-1 rounded-full text-xs font-medium">English</span>
+                            <span class="text-xs text-slate-500">Grades 6-8</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Reading Comprehension</h3>
+                        <p class="text-slate-600 text-sm mb-4">Literary analysis with questions and vocabulary.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">3 passages + questions</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="english" data-grade="4-5" onclick="openTemplateModal('grammar-parts')">
+                    <img src="resources/template-english.jpg" alt="Parts of Speech" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="english-badge text-white px-2 py-1 rounded-full text-xs font-medium">English</span>
+                            <span class="text-xs text-slate-500">Grades 4-5</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Parts of Speech</h3>
+                        <p class="text-slate-600 text-sm mb-4">Nouns, verbs, adjectives, and sentence structure.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">22 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="english" data-grade="9-12" onclick="openTemplateModal('essay-writing')">
+                    <img src="resources/template-english.jpg" alt="Essay Writing" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="english-badge text-white px-2 py-1 rounded-full text-xs font-medium">English</span>
+                            <span class="text-xs text-slate-500">Grades 9-12</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Essay Writing</h3>
+                        <p class="text-slate-600 text-sm mb-4">Argumentative and persuasive writing prompts.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">5 prompts + outline</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="english" data-grade="1-3" onclick="openTemplateModal('phonics')">
+                    <img src="resources/template-english.jpg" alt="Phonics Practice" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="english-badge text-white px-2 py-1 rounded-full text-xs font-medium">English</span>
+                            <span class="text-xs text-slate-500">Grades 1-3</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Phonics Practice</h3>
+                        <p class="text-slate-600 text-sm mb-4">Sound recognition and blending exercises.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">30 problems</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Templates -->
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="history" data-grade="6-8" onclick="openTemplateModal('world-history')">
+                    <img src="resources/template-english.jpg" alt="World History" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="history-badge text-white px-2 py-1 rounded-full text-xs font-medium">History</span>
+                            <span class="text-xs text-slate-500">Grades 6-8</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">Ancient Civilizations</h3>
+                        <p class="text-slate-600 text-sm mb-4">Egypt, Greece, and Rome with timelines and maps.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">4 sections + quiz</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="template-card bg-white rounded-2xl overflow-hidden shadow-lg" data-subject="history" data-grade="9-12" onclick="openTemplateModal('us-history')">
+                    <img src="resources/template-english.jpg" alt="US History" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="history-badge text-white px-2 py-1 rounded-full text-xs font-medium">History</span>
+                            <span class="text-xs text-slate-500">Grades 9-12</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">US History: Civil War</h3>
+                        <p class="text-slate-600 text-sm mb-4">Causes, key battles, and reconstruction period.</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">3 sections + primary sources</span>
+                            <button class="text-emerald-600 hover:text-emerald-700 font-medium text-sm">Use Template</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Results Message -->
+            <div id="noResults" class="text-center py-12 hidden">
+                <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">No templates found</h3>
+                <p class="text-slate-600">Try adjusting your search or filter criteria.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Template Modal -->
+    <div id="templateModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto modal-content">
+            <div class="p-6 border-b border-slate-200">
+                <div class="flex items-center justify-between">
+                    <h2 id="modalTitle" class="text-2xl font-bold text-slate-900">Template Preview</h2>
+                    <button onclick="closeTemplateModal()" class="text-slate-600 hover:text-slate-900">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <img id="modalImage" src="" alt="Template Preview" class="w-full h-64 object-cover rounded-xl mb-4">
+                        <div id="modalDetails" class="space-y-3">
+                            <!-- Template details will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-4">Template Description</h3>
+                        <p id="modalDescription" class="text-slate-600 mb-6">
+                            <!-- Template description will be populated here -->
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Grade Level</label>
+                                <select id="modalGrade" class="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="K">Kindergarten</option>
+                                    <option value="1">1st Grade</option>
+                                    <option value="2">2nd Grade</option>
+                                    <option value="3">3rd Grade</option>
+                                    <option value="4">4th Grade</option>
+                                    <option value="5">5th Grade</option>
+                                    <option value="6">6th Grade</option>
+                                    <option value="7">7th Grade</option>
+                                    <option value="8">8th Grade</option>
+                                    <option value="9">9th Grade</option>
+                                    <option value="10">10th Grade</option>
+                                    <option value="11">11th Grade</option>
+                                    <option value="12">12th Grade</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Number of Questions</label>
+                                <select id="modalQuestions" class="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="5">5 Questions</option>
+                                    <option value="10">10 Questions</option>
+                                    <option value="15">15 Questions</option>
+                                    <option value="20">20 Questions</option>
+                                    <option value="25">25 Questions</option>
+                                    <option value="30">30 Questions</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-3 mt-8">
+                            <button onclick="useTemplate()" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all">
+                                Use This Template
+                            </button>
+                            <button onclick="previewTemplate()" class="px-6 py-3 border border-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors">
+                                Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let currentGrade = 'all';
+        let currentTemplate = null;
+
+        // Template data
+        const templateData = {
+            'algebra-basic': {
+                title: 'Basic Algebra',
+                subject: 'Mathematics',
+                grade: '6-8',
+                questions: 15,
+                image: 'resources/template-math.jpg',
+                description: 'This template introduces students to basic algebraic concepts including variables, equations, and simple problem-solving techniques. Perfect for middle school students beginning their algebra journey.',
+                details: {
+                    'Topics Covered': 'Variables, Linear Equations, Word Problems',
+                    'Difficulty': 'Beginner',
+                    'Format': 'Mixed Practice',
+                    'Standards': 'Common Core Math 6.EE'
+                }
+            },
+            'geometry-advanced': {
+                title: 'Advanced Geometry',
+                subject: 'Mathematics',
+                grade: '9-12',
+                questions: 20,
+                image: 'resources/template-math.jpg',
+                description: 'Comprehensive geometry worksheet covering advanced topics including geometric proofs, three-dimensional figures, and trigonometric relationships.',
+                details: {
+                    'Topics Covered': 'Geometric Proofs, 3D Figures, Trigonometry',
+                    'Difficulty': 'Advanced',
+                    'Format': 'Proofs and Problems',
+                    'Standards': 'Common Core Math HSG'
+                }
+            }
+        };
+
+        function filterBySubject(subject) {
+            currentFilter = subject;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            filterTemplates();
+        }
+
+        function filterTemplates() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const gradeFilter = document.getElementById('gradeFilter').value;
+            const templates = document.querySelectorAll('.template-card');
+            let visibleCount = 0;
+
+            templates.forEach(template => {
+                const subject = template.dataset.subject;
+                const grade = template.dataset.grade;
+                const title = template.querySelector('h3').textContent.toLowerCase();
+                const description = template.querySelector('p').textContent.toLowerCase();
+
+                const matchesSubject = currentFilter === 'all' || subject === currentFilter;
+                const matchesGrade = gradeFilter === 'all' || grade === gradeFilter;
+                const matchesSearch = searchTerm === '' || title.includes(searchTerm) || description.includes(searchTerm);
+
+                if (matchesSubject && matchesGrade && matchesSearch) {
+                    template.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    template.style.display = 'none';
+                }
+            });
+
+            // Show/hide no results message
+            const noResults = document.getElementById('noResults');
+            if (visibleCount === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+        }
+
+        function openTemplateModal(templateId) {
+            currentTemplate = templateId;
+            const template = templateData[templateId];
+            
+            if (template) {
+                document.getElementById('modalTitle').textContent = template.title;
+                document.getElementById('modalImage').src = template.image;
+                document.getElementById('modalDescription').textContent = template.description;
+                
+                // Populate details
+                const detailsContainer = document.getElementById('modalDetails');
+                detailsContainer.innerHTML = '';
+                
+                Object.entries(template.details).forEach(([key, value]) => {
+                    const detailDiv = document.createElement('div');
+                    detailDiv.className = 'flex justify-between items-center py-2 border-b border-slate-100';
+                    detailDiv.innerHTML = `
+                        <span class="text-sm font-medium text-slate-700">${key}</span>
+                        <span class="text-sm text-slate-600">${value}</span>
+                    `;
+                    detailsContainer.appendChild(detailDiv);
+                });
+                
+                // Set default values
+                document.getElementById('modalGrade').value = template.grade.split('-')[0];
+                document.getElementById('modalQuestions').value = template.questions;
+            }
+            
+            document.getElementById('templateModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('templateModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function useTemplate() {
+            const grade = document.getElementById('modalGrade').value;
+            const questions = document.getElementById('modalQuestions').value;
+            
+            // Redirect to main creator with template parameters
+            const params = new URLSearchParams({
+                template: currentTemplate,
+                grade: grade,
+                questions: questions
+            });
+            
+            window.location.href = `index.html?${params.toString()}`;
+        }
+
+        function previewTemplate() {
+            // Show preview functionality
+            alert('Preview functionality would show a sample of the worksheet here.');
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const template = urlParams.get('template');
+            
+            if (template) {
+                openTemplateModal(template);
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('templateModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTemplateModal();
+            }
+        });
+    </script>
+</body>
+</html>

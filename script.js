@@ -1,5 +1,27 @@
-// Page load animations
+// API Configuration
+const API_KEY = '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';
+const API_MODEL = 'openai/gpt-oss-20b:free';
+const API_BASE_URL = 'https://openrouter.ai/api/v1';
+
+// Global State
+let worksheetState = {
+  prompt: '',
+  gradeLevel: '',
+  subject: '',
+  worksheetType: '',
+  currentLaTeX: null,
+  chatHistory: [],
+  isGenerating: false
+};
+
+// Page load animations and initialization
 document.addEventListener('DOMContentLoaded', () => {
+  initializeAnimations();
+  setupEventListeners();
+  checkCLSIService(); // Check connection on load
+});
+
+function initializeAnimations() {
   // Animate name label - fade in from left
   anime({
     targets: '#name-label',
@@ -12,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Animate central text - fade in with scale
   const centralText = document.getElementById('central-text');
-  // Ensure initial centered position
   centralText.style.transform = 'translate(-50%, -50%) scale(0.9)';
   anime({
     targets: centralText,
@@ -22,19 +43,16 @@ document.addEventListener('DOMContentLoaded', () => {
     easing: 'easeOutCubic',
     delay: 400,
     update: function(anim) {
-      // Always maintain translate(-50%, -50%) for centering while animating scale
       const scale = anim.animatables[0].target.scale;
       centralText.style.transform = `translate(-50%, -50%) scale(${scale})`;
     },
     complete: function() {
-      // Ensure final centered position
       centralText.style.transform = 'translate(-50%, -50%) scale(1)';
     }
   });
 
   // Animate input container - pop up from bottom with fade
   const inputContainer = document.getElementById('input-container');
-  // Animate a dummy object to control translateY manually, preventing anime from touching the element's transform
   const inputContainerAnim = { translateY: 20, opacity: 0 };
   anime({
     targets: inputContainerAnim,
@@ -44,15 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
     easing: 'easeOutCubic',
     delay: 800,
     update: function(anim) {
-      // Always maintain horizontal centering while animating vertical position
-      // Get values from our animated object
       const translateY = inputContainerAnim.translateY;
       const opacity = inputContainerAnim.opacity;
       inputContainer.style.transform = `translate(-50%, ${translateY}px)`;
       inputContainer.style.opacity = opacity;
     },
     complete: function() {
-      // Ensure final centered position
       inputContainer.style.transform = 'translate(-50%, 0)';
       inputContainer.style.opacity = '1';
     }
@@ -78,27 +93,14 @@ document.addEventListener('DOMContentLoaded', () => {
     delay: 1500
   });
 
-  // Filter select functionality
-  const filterSelects = document.querySelectorAll('.filter-select');
-  
-  filterSelects.forEach(select => {
-    select.addEventListener('change', (e) => {
-      // Handle filter changes if needed
-      console.log('Filter changed:', e.target.value);
-    });
-  });
-
-  // Background floating shapes animations - fade in with the rest of the page
+  // Background floating shapes animations
   const shapes = document.querySelectorAll('.floating-shape');
-  
   shapes.forEach((shape, index) => {
-    // Create infinite floating animation for each shape
     const randomX = (Math.random() - 0.5) * 200;
     const randomY = (Math.random() - 0.5) * 200;
-    const randomDuration = 8000 + Math.random() * 4000; // 8-12 seconds
-    const randomDelay = index * 100; // Stagger by 100ms instead of 500ms
+    const randomDuration = 8000 + Math.random() * 4000;
+    const randomDelay = index * 100;
     
-    // Initial fade in - faster and earlier
     anime({
       targets: shape,
       opacity: [0, 0.15],
@@ -107,9 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
       easing: 'easeOutQuad'
     });
     
-    // Continuous floating animation - smooth back-and-forth movement
     const animObj = { x: 0, y: 0, rotation: 0 };
-    
     function floatShape() {
       anime({
         targets: animObj,
@@ -123,122 +123,409 @@ document.addEventListener('DOMContentLoaded', () => {
           shape.style.transform = `translate(${animObj.x}px, ${animObj.y}px) rotate(${animObj.rotation}deg)`;
         },
         complete: function() {
-          animObj.rotation = 0; // Reset rotation for next loop
-          floatShape(); // Loop infinitely
+          animObj.rotation = 0;
+          floatShape();
         }
       });
     }
-    
     floatShape();
   });
+}
 
-  // Arrow button click handler - resize and reposition to bottom left
-  const arrowBtn = document.querySelector('.arrow-btn');
-  let hasMoved = false;
+function setupEventListeners() {
+  // Generate Button Click
+  const generateBtn = document.getElementById('generate-btn');
+  if (generateBtn) {
+    generateBtn.addEventListener('click', handleGenerate);
+  }
 
-  arrowBtn.addEventListener('click', () => {
-    if (hasMoved) return; // One-way transition, don't move back
-    
-    hasMoved = true;
-    const margin = 20;
-    const halfWidth = (window.innerWidth / 2) - (margin * 2);
-
-    // Get current computed positions
-    const centralTextRect = centralText.getBoundingClientRect();
-    const inputContainerRect = inputContainer.getBoundingClientRect();
-    
-    // Calculate final positions in pixels
-    const finalCentralTextLeft = margin;
-    const finalCentralTextTop = window.innerHeight - (margin + 250) - centralTextRect.height;
-    const finalInputLeft = margin;
-    // Position input container just below the central text with some spacing
-    const spacing = 20;
-    const finalInputTop = finalCentralTextTop + centralTextRect.height + spacing;
-    
-    // Calculate deltas from current position
-    const centralTextDeltaX = finalCentralTextLeft - centralTextRect.left;
-    const centralTextDeltaY = finalCentralTextTop - centralTextRect.top;
-    const inputDeltaX = finalInputLeft - inputContainerRect.left;
-    const inputDeltaY = finalInputTop - inputContainerRect.top;
-
-    // Cache center positions to avoid recalculation
-    const centerX = window.innerWidth / 2;
-    const centerYCentral = window.innerHeight * 0.45;
-    const centerYInput = window.innerHeight * 0.55;
-
-    // Set will-change for better performance and force GPU acceleration
-    centralText.style.willChange = 'transform';
-    centralText.style.backfaceVisibility = 'hidden';
-    inputContainer.style.willChange = 'transform, width, height';
-    inputContainer.style.backfaceVisibility = 'hidden';
-
-    // Get current height and calculate target height (increase by 50%)
-    const currentHeight = inputContainerRect.height;
-    const targetHeight = currentHeight * 1.5; // Increase height by 50%
-
-    // Use dummy objects to avoid conflicts with existing transforms
-    const centralTextAnim = { offsetX: 0, offsetY: 0 };
-    const inputContainerAnim = { offsetX: 0, offsetY: 0, w: inputContainerRect.width, h: currentHeight };
-
-    // Animate central text
-    anime({
-      targets: centralTextAnim,
-      offsetX: [0, centralTextDeltaX],
-      offsetY: [0, centralTextDeltaY],
-      duration: 600,
-      easing: 'easeOutCubic',
-      update: function() {
-        // Only update transform during animation to avoid layout recalculations
-        const offsetX = centralTextAnim.offsetX;
-        const offsetY = centralTextAnim.offsetY;
-        // Calculate translate from the -50% center position
-        centralText.style.transform = `translate3d(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px), 0)`;
-      },
-      complete: function() {
-        // Set final position
-        centralText.style.top = finalCentralTextTop + 'px';
-        centralText.style.left = finalCentralTextLeft + 'px';
-        centralText.style.transform = 'translate3d(0, 0, 0)';
-        centralText.style.textAlign = 'left';
-        centralText.style.willChange = 'auto';
-        centralText.style.backfaceVisibility = '';
+  // Input Enter Key
+  const input = document.getElementById('worksheet-input');
+  if (input) {
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleGenerate();
       }
     });
+  }
 
-    // Animate input container - increase height and position below text
-    anime({
-      targets: inputContainerAnim,
-      offsetX: [0, inputDeltaX],
-      offsetY: [0, inputDeltaY],
-      w: [inputContainerRect.width, halfWidth],
-      h: [currentHeight, targetHeight], // Increase height
-      duration: 600,
-      easing: 'easeOutCubic',
-      update: function() {
-        // Only update transform, width, and height during animation
-        const offsetX = inputContainerAnim.offsetX;
-        const offsetY = inputContainerAnim.offsetY;
-        const w = inputContainerAnim.w;
-        const h = inputContainerAnim.h;
-        inputContainer.style.width = w + 'px';
-        inputContainer.style.height = h + 'px';
-        inputContainer.style.transform = `translate3d(calc(-50% + ${offsetX}px), ${offsetY}px, 0)`;
-      },
-      complete: function() {
-        // Set final position with increased height
-        // Calculate top position to ensure bottom margin: window height - bottom margin - container height
-        const finalTopWithBottomMargin = window.innerHeight - margin - targetHeight;
-        // Use the lower of: below text position OR position that gives bottom margin
-        const finalTop = Math.max(finalInputTop, finalTopWithBottomMargin)-50;
-        
-        inputContainer.style.top = finalTop + 'px';
-        inputContainer.style.left = finalInputLeft + 'px';
-        inputContainer.style.transform = 'translate3d(0, 0, 0)';
-        inputContainer.style.width = halfWidth + 'px';
-        inputContainer.style.height = targetHeight + 'px';
-        inputContainer.style.willChange = 'auto';
-        inputContainer.style.backfaceVisibility = '';
+  // Chat Input Enter Key
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) {
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendChatMessage();
       }
     });
+  }
+
+  // Send Chat Button
+  const sendChatBtn = document.getElementById('send-chat-btn');
+  if (sendChatBtn) {
+    sendChatBtn.addEventListener('click', sendChatMessage);
+  }
+
+  // Download Button
+  const downloadBtn = document.getElementById('download-btn');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', downloadPDF);
+  }
+
+  // Check Connection Button
+  const checkConnBtn = document.getElementById('check-connection-btn');
+  if (checkConnBtn) {
+    checkConnBtn.addEventListener('click', checkCLSIService);
+  }
+}
+
+function handleGenerate() {
+  const prompt = document.getElementById('worksheet-input').value;
+  if (!prompt.trim()) return;
+
+  // Update State
+  worksheetState.prompt = prompt;
+  worksheetState.gradeLevel = document.getElementById('grade-select').value;
+  worksheetState.subject = document.getElementById('subject-select').value;
+  worksheetState.worksheetType = document.getElementById('type-select').value;
+
+  // Transition to Workspace
+  transitionToWorkspace();
+
+  // Start Generation
+  generateWorksheet();
+}
+
+function transitionToWorkspace() {
+  const inputContainer = document.getElementById('input-container');
+  const centralText = document.getElementById('central-text');
+  const workspaceContainer = document.getElementById('workspace-container');
+  const nameLabel = document.getElementById('name-label');
+
+  // 1. Move Input Container to Top Left (simulating chat input area position, but we actually hide it and show the real chat input)
+  // Actually, for this design, let's fade out the center input and fade in the workspace
+  
+  // Animate Central Text Out
+  anime({
+    targets: centralText,
+    opacity: 0,
+    scale: 0.8,
+    duration: 500,
+    easing: 'easeInCubic',
+    complete: () => {
+      centralText.style.display = 'none';
+    }
   });
-});
+
+  // Animate Input Container Out
+  anime({
+    targets: inputContainer,
+    opacity: 0,
+    translateY: 20,
+    duration: 500,
+    easing: 'easeInCubic',
+    complete: () => {
+      inputContainer.style.display = 'none';
+    }
+  });
+
+  // Fade In Workspace
+  workspaceContainer.classList.remove('hidden');
+  anime({
+    targets: workspaceContainer,
+    opacity: [0, 1],
+    duration: 800,
+    delay: 300,
+    easing: 'easeOutCubic',
+    begin: () => {
+      workspaceContainer.classList.add('active');
+    }
+  });
+}
+
+async function generateWorksheet() {
+  setLoadingState(true);
+  
+  try {
+    const systemPrompt = `You are an expert LaTeX worksheet generator. Generate a complete, valid LaTeX document for a worksheet based on the user's requirements. The LaTeX should be ready to compile and should include:
+- Proper document structure with necessary packages
+- Professional formatting
+- Questions appropriate for the specified grade level
+- Answer key section
+- Proper mathematical notation using LaTeX math mode
+
+Generate ONLY the LaTeX code, no explanations or markdown formatting. Start with \\documentclass and end with \\end{document}.`;
+
+    const userPrompt = `Create a ${worksheetState.worksheetType || 'practice'} worksheet for ${worksheetState.gradeLevel || 'general'} grade ${worksheetState.subject || 'general'} with the following description: "${worksheetState.prompt}".
+    
+    Make sure the worksheet is age-appropriate and curriculum-aligned. Include a variety of question types where appropriate.`;
+
+    const latexContent = await callAPI(systemPrompt, userPrompt);
+    
+    worksheetState.currentLaTeX = latexContent;
+    
+    // Render Preview
+    await renderPreview(latexContent);
+    
+    // Enable Chat
+    enableChat();
+    
+    // Add initial AI message
+    addChatMessage("I've generated your worksheet! Let me know if you'd like any changes.", 'ai');
+
+  } catch (error) {
+    console.error('Error generating worksheet:', error);
+    addChatMessage("Sorry, I encountered an error generating the worksheet. Please try again.", 'ai');
+    setLoadingState(false);
+  }
+}
+
+async function callAPI(systemPrompt, userPrompt) {
+  const response = await fetch(`${API_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`,
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'WorkNest'
+    },
+    body: JSON.stringify({
+      model: API_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 4000
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  let content = data.choices[0].message.content.trim();
+  
+  // Clean up markdown
+  content = content.replace(/^```latex\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
+  content = content.replace(/^```tex\n?/g, '').replace(/```$/g, '');
+  
+  return content;
+}
+
+async function renderPreview(latexContent) {
+  const pdfViewer = document.getElementById('pdf-viewer');
+  const htmlPreview = document.getElementById('html-preview');
+  const loadingState = document.getElementById('loading-state');
+  const downloadBtn = document.getElementById('download-btn');
+
+  // Show loading
+  loadingState.classList.remove('hidden');
+  pdfViewer.classList.add('hidden');
+  htmlPreview.classList.add('hidden');
+
+  try {
+    // Try CLSI Compilation
+    const pdfBlob = await compileLaTeXToPDF(latexContent);
+    
+    if (pdfBlob) {
+      const pdfUrl = URL.createObjectURL(pdfBlob) + '#toolbar=0&navpanes=0&scrollbar=0';
+      pdfViewer.src = pdfUrl;
+      pdfViewer.classList.remove('hidden');
+      loadingState.classList.add('hidden');
+      window.currentPdfBlob = pdfBlob;
+      downloadBtn.disabled = false;
+      return;
+    }
+  } catch (error) {
+    console.warn('PDF compilation failed, falling back to HTML:', error);
+  }
+
+  // Fallback to HTML
+  loadingState.classList.add('hidden');
+  htmlPreview.classList.remove('hidden');
+  htmlPreview.innerHTML = convertLaTeXToHTML(latexContent);
+  
+  if (window.MathJax) {
+    window.MathJax.typesetPromise([htmlPreview]);
+  }
+  
+  downloadBtn.disabled = false; // Allow download (will use html2pdf)
+}
+
+async function compileLaTeXToPDF(latexContent) {
+  const CLSI_PROXY = 'http://localhost:3014';
+  const projectId = 'worknest-' + Date.now();
+  
+  try {
+    const response = await fetch(`${CLSI_PROXY}/project/${projectId}/compile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        compile: {
+          options: { compiler: 'pdflatex', timeout: 60 },
+          rootResourcePath: 'main.tex',
+          resources: [{ path: 'main.tex', content: latexContent }]
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error('CLSI compilation failed');
+
+    const result = await response.json();
+    if (result.compile && result.compile.status === 'success') {
+      const pdfFile = result.compile.outputFiles.find(f => f.type === 'pdf');
+      if (pdfFile) {
+        const pdfUrl = `${CLSI_PROXY}${pdfFile.url.replace(/^https?:\/\/[^\/]+/, '')}`;
+        const pdfResponse = await fetch(pdfUrl);
+        return await pdfResponse.blob();
+      }
+    }
+  } catch (error) {
+    console.warn('CLSI error:', error);
+    return null;
+  }
+}
+
+// Chat Functionality
+function enableChat() {
+  document.getElementById('chat-input').disabled = false;
+  document.getElementById('send-chat-btn').disabled = false;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  addChatMessage(message, 'user');
+  input.value = '';
+  
+  // Show typing indicator (simplified)
+  const typingId = addChatMessage('...', 'ai');
+
+  try {
+    const response = await callChatAPI(message);
+    
+    // Remove typing indicator
+    const typingBubble = document.querySelector(`[data-msg-id="${typingId}"]`);
+    if (typingBubble) typingBubble.remove();
+
+    addChatMessage(response.message, 'ai');
+
+    if (response.latex) {
+      worksheetState.currentLaTeX = response.latex;
+      renderPreview(response.latex);
+    }
+  } catch (error) {
+    console.error('Chat error:', error);
+    addChatMessage('Sorry, something went wrong.', 'ai');
+  }
+}
+
+function addChatMessage(text, sender) {
+  const container = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  const id = Date.now();
+  bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+  bubble.textContent = text;
+  bubble.dataset.msgId = id;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+async function callChatAPI(userMessage) {
+  const systemPrompt = `You are an AI assistant helping to edit a LaTeX worksheet. 
+  Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
+  Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX.substring(0, 500) + '...' : 'None'}`;
+
+  const response = await fetch(`${API_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
+    },
+    body: JSON.stringify({
+      model: API_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+
+  const data = await response.json();
+  let content = data.choices[0].message.content.trim();
+  
+  try {
+    content = content.replace(/^```json\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
+    return JSON.parse(content);
+  } catch (e) {
+    return { message: content, latex: null };
+  }
+}
+
+// Utilities
+function setLoadingState(loading) {
+  const loadingState = document.getElementById('loading-state');
+  if (loading) {
+    loadingState.classList.remove('hidden');
+  } else {
+    loadingState.classList.add('hidden');
+  }
+}
+
+async function checkCLSIService() {
+  const statusEl = document.getElementById('connection-status');
+  const dot = statusEl.querySelector('.status-dot');
+  const text = statusEl.querySelector('.status-text');
+  
+  statusEl.classList.add('checking');
+  text.textContent = 'Checking...';
+
+  try {
+    await fetch('http://localhost:3014');
+    statusEl.classList.remove('checking');
+    statusEl.classList.add('connected');
+    dot.style.background = 'var(--success-color)';
+    text.textContent = 'Connected';
+  } catch (e) {
+    statusEl.classList.remove('checking');
+    statusEl.classList.add('disconnected');
+    dot.style.background = 'var(--error-color)';
+    text.textContent = 'Disconnected';
+  }
+}
+
+function downloadPDF() {
+  if (window.currentPdfBlob) {
+    const url = URL.createObjectURL(window.currentPdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'worksheet.pdf';
+    a.click();
+  } else {
+    // Fallback html2pdf
+    const element = document.getElementById('html-preview');
+    html2pdf().from(element).save('worksheet.pdf');
+  }
+}
+
+// Simple LaTeX to HTML converter for fallback
+function convertLaTeXToHTML(latex) {
+  // Basic replacements for demo purposes
+  let html = latex
+    .replace(/\\documentclass\[.*?\]\{.*?\}/g, '')
+    .replace(/\\usepackage\{.*?\}/g, '')
+    .replace(/\\begin\{document\}/g, '')
+    .replace(/\\end\{document\}/g, '')
+    .replace(/\\section\*?\{([^\}]+)\}/g, '<h2>$1</h2>')
+    .replace(/\\textbf\{([^\}]+)\}/g, '<strong>$1</strong>')
+    .replace(/\\textit\{([^\}]+)\}/g, '<em>$1</em>')
+    .replace(/\\begin\{enumerate\}/g, '<ol>')
+    .replace(/\\end\{enumerate\}/g, '</ol>')
+    .replace(/\\item\s+([^\n]+)/g, '<li>$1</li>')
+    .replace(/\\\\/g, '<br>');
+  return `<div class="latex-content">${html}</div>`;
+}
