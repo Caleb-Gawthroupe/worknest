@@ -330,7 +330,7 @@ async function generateWorksheet() {
 
 Generate ONLY the LaTeX code, no explanations or markdown formatting. Start with \\documentclass and end with \\end{document}.`;
 
-    const userPrompt = `Create a ${worksheetState.worksheetType || 'practice'} worksheet for ${worksheetState.gradeLevel || 'general'} grade ${worksheetState.subject || 'general'} with the following description: "${worksheetState.prompt}".
+    const userPrompt = `Create a ${worksheetState.worksheetType || 'practice'} for ${worksheetState.gradeLevel || 'general'} ${worksheetState.subject || 'general'} with the following description: "${worksheetState.prompt}".
     
     Make sure the worksheet is age-appropriate and curriculum-aligned. Include a variety of question types where appropriate.`;
 
