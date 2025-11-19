@@ -1,6 +1,6 @@
 // API Configuration
-const API_KEY = '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';
-const API_MODEL = 'openai/gpt-oss-20b:free';
+const API_KEY = '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';
+const API_MODEL = 'google/gemini-2.0-flash-exp:free';
 const API_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Global State
@@ -42,11 +42,11 @@ function initializeAnimations() {
     duration: 800,
     easing: 'easeOutCubic',
     delay: 400,
-    update: function(anim) {
+    update: function (anim) {
       const scale = anim.animatables[0].target.scale;
       centralText.style.transform = `translate(-50%, -50%) scale(${scale})`;
     },
-    complete: function() {
+    complete: function () {
       centralText.style.transform = 'translate(-50%, -50%) scale(1)';
     }
   });
@@ -61,13 +61,13 @@ function initializeAnimations() {
     duration: 700,
     easing: 'easeOutCubic',
     delay: 800,
-    update: function(anim) {
+    update: function (anim) {
       const translateY = inputContainerAnim.translateY;
       const opacity = inputContainerAnim.opacity;
       inputContainer.style.transform = `translate(-50%, ${translateY}px)`;
       inputContainer.style.opacity = opacity;
     },
-    complete: function() {
+    complete: function () {
       inputContainer.style.transform = 'translate(-50%, 0)';
       inputContainer.style.opacity = '1';
     }
@@ -80,7 +80,7 @@ function initializeAnimations() {
     scale: [0.95, 1],
     duration: 500,
     easing: 'easeOutCubic',
-    delay: anime.stagger(100, {start: 1200})
+    delay: anime.stagger(100, { start: 1200 })
   });
 
   // Animate arrow button - fade in with slight scale
@@ -100,7 +100,7 @@ function initializeAnimations() {
     const randomY = (Math.random() - 0.5) * 200;
     const randomDuration = 8000 + Math.random() * 4000;
     const randomDelay = index * 100;
-    
+
     anime({
       targets: shape,
       opacity: [0, 0.15],
@@ -108,7 +108,7 @@ function initializeAnimations() {
       delay: 600 + randomDelay,
       easing: 'easeOutQuad'
     });
-    
+
     const animObj = { x: 0, y: 0, rotation: 0 };
     function floatShape() {
       anime({
@@ -119,10 +119,10 @@ function initializeAnimations() {
         duration: randomDuration * 2,
         easing: 'easeInOutSine',
         delay: 600 + randomDelay,
-        update: function() {
+        update: function () {
           shape.style.transform = `translate(${animObj.x}px, ${animObj.y}px) rotate(${animObj.rotation}deg)`;
         },
-        complete: function() {
+        complete: function () {
           animObj.rotation = 0;
           floatShape();
         }
@@ -176,6 +176,12 @@ function setupEventListeners() {
   if (checkConnBtn) {
     checkConnBtn.addEventListener('click', checkCLSIService);
   }
+
+  // Back to Home Button
+  const backBtn = document.getElementById('back-home-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', transitionToHome);
+  }
 }
 
 function handleGenerate() {
@@ -199,11 +205,7 @@ function transitionToWorkspace() {
   const inputContainer = document.getElementById('input-container');
   const centralText = document.getElementById('central-text');
   const workspaceContainer = document.getElementById('workspace-container');
-  const nameLabel = document.getElementById('name-label');
 
-  // 1. Move Input Container to Top Left (simulating chat input area position, but we actually hide it and show the real chat input)
-  // Actually, for this design, let's fade out the center input and fade in the workspace
-  
   // Animate Central Text Out
   anime({
     targets: centralText,
@@ -242,9 +244,82 @@ function transitionToWorkspace() {
   });
 }
 
+function transitionToHome() {
+  const inputContainer = document.getElementById('input-container');
+  const centralText = document.getElementById('central-text');
+  const workspaceContainer = document.getElementById('workspace-container');
+
+  // Fade Out Workspace
+  anime({
+    targets: workspaceContainer,
+    opacity: 0,
+    duration: 500,
+    easing: 'easeInCubic',
+    complete: () => {
+      workspaceContainer.classList.add('hidden');
+      workspaceContainer.classList.remove('active');
+
+      // Reset Workspace State
+      resetWorkspace();
+    }
+  });
+
+  // Fade In Central Text
+  centralText.style.display = 'block';
+  anime({
+    targets: centralText,
+    opacity: [0, 1],
+    scale: [0.8, 1],
+    duration: 800,
+    delay: 300,
+    easing: 'easeOutCubic'
+  });
+
+  // Fade In Input Container
+  inputContainer.style.display = 'flex';
+  anime({
+    targets: inputContainer,
+    opacity: [0, 1],
+    translateY: [20, 0],
+    duration: 800,
+    delay: 400,
+    easing: 'easeOutCubic'
+  });
+}
+
+function resetWorkspace() {
+  // Clear chat history except initial message
+  const chatMessages = document.getElementById('chat-messages');
+  chatMessages.innerHTML = `
+    <div class="chat-bubble ai-bubble">
+      Hi! I'm generating your worksheet. Once it's ready, you can ask me to make changes!
+    </div>
+  `;
+
+  // Clear preview
+  const pdfViewer = document.getElementById('pdf-viewer');
+  const htmlPreview = document.getElementById('html-preview');
+  const loadingState = document.getElementById('loading-state');
+
+  pdfViewer.src = '';
+  pdfViewer.classList.add('hidden');
+  htmlPreview.innerHTML = '';
+  htmlPreview.classList.add('hidden');
+  loadingState.classList.remove('hidden');
+
+  // Reset buttons
+  document.getElementById('download-btn').disabled = true;
+  document.getElementById('chat-input').disabled = true;
+  document.getElementById('send-chat-btn').disabled = true;
+
+  // Reset state
+  worksheetState.currentLaTeX = null;
+  window.currentPdfBlob = null;
+}
+
 async function generateWorksheet() {
   setLoadingState(true);
-  
+
   try {
     const systemPrompt = `You are an expert LaTeX worksheet generator. Generate a complete, valid LaTeX document for a worksheet based on the user's requirements. The LaTeX should be ready to compile and should include:
 - Proper document structure with necessary packages
@@ -259,23 +334,53 @@ Generate ONLY the LaTeX code, no explanations or markdown formatting. Start with
     
     Make sure the worksheet is age-appropriate and curriculum-aligned. Include a variety of question types where appropriate.`;
 
-    const latexContent = await callAPI(systemPrompt, userPrompt);
-    
+    // Call API with retry logic
+    const latexContent = await callAPIWithRetry(systemPrompt, userPrompt);
+
     worksheetState.currentLaTeX = latexContent;
-    
+
     // Render Preview
     await renderPreview(latexContent);
-    
+
     // Enable Chat
     enableChat();
-    
+
     // Add initial AI message
     addChatMessage("I've generated your worksheet! Let me know if you'd like any changes.", 'ai');
 
   } catch (error) {
     console.error('Error generating worksheet:', error);
-    addChatMessage("Sorry, I encountered an error generating the worksheet. Please try again.", 'ai');
+    addChatMessage("Sorry, I encountered an error generating the worksheet after multiple attempts. Please try again.", 'ai');
     setLoadingState(false);
+  }
+}
+
+async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 10) {
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      attempts++;
+      console.log(`API Attempt ${attempts}/${maxRetries}`);
+
+      const content = await callAPI(systemPrompt, userPrompt);
+
+      // Basic validation - check if it looks like LaTeX
+      if (content && content.includes('\\documentclass') && content.includes('\\end{document}')) {
+        return content;
+      } else {
+        console.warn('API returned invalid LaTeX, retrying...');
+        throw new Error('Invalid LaTeX response');
+      }
+    } catch (error) {
+      console.warn(`Attempt ${attempts} failed:`, error);
+      if (attempts >= maxRetries) throw error;
+
+      // Wait before retry (exponential backoff with higher initial delay for 429s)
+      const delay = Math.min(2000 * Math.pow(2, attempts), 10000);
+      console.log(`Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 
@@ -305,11 +410,11 @@ async function callAPI(systemPrompt, userPrompt) {
 
   const data = await response.json();
   let content = data.choices[0].message.content.trim();
-  
+
   // Clean up markdown
   content = content.replace(/^```latex\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
   content = content.replace(/^```tex\n?/g, '').replace(/```$/g, '');
-  
+
   return content;
 }
 
@@ -327,7 +432,7 @@ async function renderPreview(latexContent) {
   try {
     // Try CLSI Compilation
     const pdfBlob = await compileLaTeXToPDF(latexContent);
-    
+
     if (pdfBlob) {
       const pdfUrl = URL.createObjectURL(pdfBlob) + '#toolbar=0&navpanes=0&scrollbar=0';
       pdfViewer.src = pdfUrl;
@@ -345,18 +450,18 @@ async function renderPreview(latexContent) {
   loadingState.classList.add('hidden');
   htmlPreview.classList.remove('hidden');
   htmlPreview.innerHTML = convertLaTeXToHTML(latexContent);
-  
+
   if (window.MathJax) {
     window.MathJax.typesetPromise([htmlPreview]);
   }
-  
+
   downloadBtn.disabled = false; // Allow download (will use html2pdf)
 }
 
 async function compileLaTeXToPDF(latexContent) {
   const CLSI_PROXY = 'http://localhost:3014';
   const projectId = 'worknest-' + Date.now();
-  
+
   try {
     const response = await fetch(`${CLSI_PROXY}/project/${projectId}/compile`, {
       method: 'POST',
@@ -400,13 +505,13 @@ async function sendChatMessage() {
 
   addChatMessage(message, 'user');
   input.value = '';
-  
+
   // Show typing indicator (simplified)
   const typingId = addChatMessage('...', 'ai');
 
   try {
     const response = await callChatAPI(message);
-    
+
     // Remove typing indicator
     const typingBubble = document.querySelector(`[data-msg-id="${typingId}"]`);
     if (typingBubble) typingBubble.remove();
@@ -457,7 +562,7 @@ async function callChatAPI(userMessage) {
 
   const data = await response.json();
   let content = data.choices[0].message.content.trim();
-  
+
   try {
     content = content.replace(/^```json\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
     return JSON.parse(content);
@@ -480,7 +585,7 @@ async function checkCLSIService() {
   const statusEl = document.getElementById('connection-status');
   const dot = statusEl.querySelector('.status-dot');
   const text = statusEl.querySelector('.status-text');
-  
+
   statusEl.classList.add('checking');
   text.textContent = 'Checking...';
 
@@ -504,7 +609,10 @@ function downloadPDF() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'worksheet.pdf';
+    document.body.appendChild(a); // Append to body to ensure click works
     a.click();
+    document.body.removeChild(a); // Clean up
+    URL.revokeObjectURL(url); // Free memory
   } else {
     // Fallback html2pdf
     const element = document.getElementById('html-preview');

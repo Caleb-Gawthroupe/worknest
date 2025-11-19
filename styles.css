@@ -261,9 +261,11 @@ body {
   display: flex;
   z-index: 5;
   opacity: 0;
-  pointer-events: none; /* Initially disabled */
+  pointer-events: none;
+  /* Initially disabled */
   transition: opacity 0.5s ease;
-  padding-top: 80px; /* Space for header/moved input */
+  padding-top: 80px;
+  /* Space for header/moved input */
   box-sizing: border-box;
 }
 
@@ -403,6 +405,24 @@ body {
   gap: 16px;
 }
 
+.back-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.back-btn:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
 .preview-title {
   font-weight: 600;
   color: #1f2937;
@@ -532,6 +552,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -539,18 +560,29 @@ body {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Transition States for Input Container */
 .input-container.workspace-mode {
-  width: 380px; /* Match chat panel width minus padding */
+  width: 380px;
+  /* Match chat panel width minus padding */
   max-width: none;
   padding: 16px;
   min-height: auto;
@@ -575,5 +607,6 @@ body {
 /* Transition States for Central Text */
 .central-text.workspace-mode {
   transform: scale(0.6);
-  opacity: 0; /* Hide it eventually or move it to header */
+  opacity: 0;
+  /* Hide it eventually or move it to header */
 }
