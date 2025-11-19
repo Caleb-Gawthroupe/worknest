@@ -9,9 +9,13 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import json
+import ssl
 
 CLSI_URL = 'http://localhost:3013'
 PROXY_PORT = 3014
+
+# Create unverified SSL context
+ssl_context = ssl._create_unverified_context()
 
 class CORSProxyHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -19,7 +23,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
         self.send_header('Access-Control-Max-Age', '86400')
         self.end_headers()
     
@@ -30,35 +34,38 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             
-            # Forward request to CLSI
-            url = f"{CLSI_URL}{self.path}"
-            req = urllib.request.Request(url, data=body, method='POST')
-            
-            # Forward headers
-            for header, value in self.headers.items():
-                if header.lower() not in ['host', 'connection']:
-                    req.add_header(header, value)
-            
-            # Make request to CLSI
-            with urllib.request.urlopen(req, timeout=120) as response:
-                # Read response
-                response_data = response.read()
+            # Check if request is for Anthropic
+            if self.path.startswith('/anthropic'):
+                url = 'https://api.anthropic.com/v1/messages'
+                # Remove host header to avoid conflicts
+                headers = {k: v for k, v in self.headers.items() if k.lower() not in ['host', 'content-length']}
+                req = urllib.request.Request(url, data=body, method='POST', headers=headers)
                 
-                # Send CORS headers and response
-                self.send_response(response.getcode())
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-                self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
-                self.send_header('Content-Type', response.headers.get('Content-Type', 'application/json'))
-                self.end_headers()
-                self.wfile.write(response_data)
+                # Make request with SSL context
+                with urllib.request.urlopen(req, timeout=120, context=ssl_context) as response:
+                    response_data = response.read()
+                    self._send_response_data(response, response_data)
+            else:
+                # Forward request to CLSI
+                url = f"{CLSI_URL}{self.path}"
+                req = urllib.request.Request(url, data=body, method='POST')
+                
+                # Forward headers for CLSI
+                for header, value in self.headers.items():
+                    if header.lower() not in ['host', 'connection']:
+                        req.add_header(header, value)
+                
+                # Make request to CLSI (no SSL context needed for localhost HTTP)
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    response_data = response.read()
+                    self._send_response_data(response, response_data)
                 
         except urllib.error.HTTPError as e:
-            # Forward HTTP errors (4xx, 5xx) from CLSI
+            # Forward HTTP errors (4xx, 5xx)
             self.send_response(e.code)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
             self.send_header('Content-Type', e.headers.get('Content-Type', 'application/json'))
             self.end_headers()
             self.wfile.write(e.read())
@@ -72,6 +79,15 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
             self.wfile.write(error_response)
             print(f"Error: {e}")
     
+    def _send_response_data(self, response, response_data):
+        self.send_response(response.getcode())
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
+        self.send_header('Content-Type', response.headers.get('Content-Type', 'application/json'))
+        self.end_headers()
+        self.wfile.write(response_data)
+
     def do_GET(self):
         """Proxy GET requests to CLSI"""
         try:
@@ -119,4 +135,3 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\nStopping proxy...")
         server.shutdown()
-
