@@ -1,21 +1,96 @@
 // API Configuration
-const API_KEY = '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';
-const API_MODEL = 'google/gemini-2.0-flash-exp:free';
+// API Configuration
+let API_KEY = localStorage.getItem('openrouter_key') || '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';
+let ANTHROPIC_KEY = localStorage.getItem('anthropic_key') || '';
+let CURRENT_PROVIDER = localStorage.getItem('provider') || 'openrouter'; // 'openrouter' or 'anthropic'
+
+const API_MODEL_OPENROUTER = 'google/gemini-2.0-flash-exp:free';
+const API_MODEL_ANTHROPIC = 'claude-3-5-sonnet-20240620';
 const API_BASE_URL = 'https://openrouter.ai/api/v1';
 
-// Global State
+// State
 let worksheetState = {
   prompt: '',
   gradeLevel: '',
   subject: '',
   worksheetType: '',
-  currentLaTeX: null,
-  chatHistory: [],
-  isGenerating: false
+  currentLaTeX: '',
+  history: []
 };
+
+// Initialize Settings
+function initSettings() {
+  const modal = document.getElementById('settings-modal');
+  const settingsBtn = document.getElementById('settings-btn');
+  const closeBtn = document.getElementById('close-settings-btn');
+  const saveBtn = document.getElementById('save-settings-btn');
+  const toggleBtns = document.querySelectorAll('.toggle-btn');
+  const openrouterGroup = document.getElementById('openrouter-group');
+  const anthropicGroup = document.getElementById('anthropic-group');
+  const openrouterInput = document.getElementById('openrouter-key');
+  const anthropicInput = document.getElementById('anthropic-key');
+
+  // Set initial values
+  openrouterInput.value = API_KEY;
+  anthropicInput.value = ANTHROPIC_KEY;
+  updateToggleUI(CURRENT_PROVIDER);
+
+  settingsBtn.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    // Small delay to allow display:flex to apply before opacity transition
+    setTimeout(() => modal.classList.add('visible'), 10);
+  });
+
+  closeBtn.addEventListener('click', () => {
+    modal.classList.remove('visible');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+  });
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const provider = btn.dataset.provider;
+      updateToggleUI(provider);
+    });
+  });
+
+  saveBtn.addEventListener('click', () => {
+    API_KEY = openrouterInput.value.trim();
+    ANTHROPIC_KEY = anthropicInput.value.trim();
+
+    localStorage.setItem('openrouter_key', API_KEY);
+    localStorage.setItem('anthropic_key', ANTHROPIC_KEY);
+    localStorage.setItem('provider', CURRENT_PROVIDER);
+
+    modal.classList.remove('visible');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+
+    // Show success toast (optional)
+    alert('Settings saved!');
+  });
+
+  function updateToggleUI(provider) {
+    CURRENT_PROVIDER = provider;
+    toggleBtns.forEach(btn => {
+      if (btn.dataset.provider === provider) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    if (provider === 'openrouter') {
+      openrouterGroup.classList.remove('hidden');
+      anthropicGroup.classList.add('hidden');
+    } else {
+      openrouterGroup.classList.add('hidden');
+      anthropicGroup.classList.remove('hidden');
+    }
+  }
+}
 
 // Page load animations and initialization
 document.addEventListener('DOMContentLoaded', () => {
+  initSettings();
   initializeAnimations();
   setupEventListeners();
   checkCLSIService(); // Check connection on load
@@ -391,6 +466,19 @@ async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 10) {
 }
 
 async function callAPI(systemPrompt, userPrompt) {
+  if (CURRENT_PROVIDER === 'anthropic') {
+    try {
+      console.log('Attempting Claude API...');
+      return await callAnthropicAPI(systemPrompt, userPrompt);
+    } catch (error) {
+      console.warn('Claude API failed, falling back to OpenRouter:', error);
+      // Fallback to OpenRouter
+      console.log('Falling back to OpenRouter...');
+    }
+  }
+
+  // OpenRouter Logic
+  console.log('Calling OpenRouter API...');
   const response = await fetch(`${API_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -400,7 +488,7 @@ async function callAPI(systemPrompt, userPrompt) {
       'X-Title': 'WorkNest'
     },
     body: JSON.stringify({
-      model: API_MODEL,
+      model: API_MODEL_OPENROUTER,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -428,11 +516,54 @@ async function callAPI(systemPrompt, userPrompt) {
   }
 
   let content = data.choices[0].message.content.trim();
+  return cleanLatex(content);
+}
 
-  // Clean up markdown
+async function callAnthropicAPI(systemPrompt, userPrompt) {
+  const CLSI_PROXY = 'http://localhost:3014'; // Use proxy for CORS
+
+  const response = await fetch(`${CLSI_PROXY}/anthropic`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: API_MODEL_ANTHROPIC,
+      system: systemPrompt,
+      messages: [
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 4000
+    })
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(`Claude API Auth Error (${response.status}): Check your Key.`);
+    }
+    const errText = await response.text();
+    throw new Error(`Claude API error: ${response.status} - ${errText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  if (!data.content || !data.content.length) {
+    throw new Error('Invalid Claude response');
+  }
+
+  let content = data.content[0].text.trim();
+  return cleanLatex(content);
+}
+
+function cleanLatex(content) {
   content = content.replace(/^```latex\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
   content = content.replace(/^```tex\n?/g, '').replace(/```$/g, '');
-
   return content;
 }
 
@@ -563,6 +694,16 @@ async function callChatAPI(userMessage) {
   Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
   Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX.substring(0, 500) + '...' : 'None'}`;
 
+  if (CURRENT_PROVIDER === 'anthropic') {
+    try {
+      return await callAnthropicChatAPI(systemPrompt, userMessage);
+    } catch (error) {
+      console.warn('Claude API failed, falling back to OpenRouter:', error);
+      // Fallback to OpenRouter
+    }
+  }
+
+  // OpenRouter Logic
   const response = await fetch(`${API_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -570,7 +711,7 @@ async function callChatAPI(userMessage) {
       'Authorization': `Bearer ${API_KEY}`
     },
     body: JSON.stringify({
-      model: API_MODEL,
+      model: API_MODEL_OPENROUTER,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
@@ -589,7 +730,49 @@ async function callChatAPI(userMessage) {
   }
 
   let content = data.choices[0].message.content.trim();
+  return parseChatResponse(content);
+}
 
+async function callAnthropicChatAPI(systemPrompt, userMessage) {
+  const CLSI_PROXY = 'http://localhost:3014';
+
+  const response = await fetch(`${CLSI_PROXY}/anthropic`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: API_MODEL_ANTHROPIC,
+      system: systemPrompt,
+      messages: [
+        { role: 'user', content: userMessage }
+      ],
+      max_tokens: 4000
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Claude API error: ${response.status} - ${errText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  if (!data.content || !data.content.length) {
+    throw new Error('Invalid Claude response');
+  }
+
+  let content = data.content[0].text.trim();
+  return parseChatResponse(content);
+}
+
+function parseChatResponse(content) {
   // Try to parse JSON
   try {
     // Remove markdown code blocks if present
