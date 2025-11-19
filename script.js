@@ -1,12 +1,8 @@
-// API Configuration
-// API Configuration
-let API_KEY = localStorage.getItem('openrouter_key') || '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';
-let ANTHROPIC_KEY = localStorage.getItem('anthropic_key') || '';
-let CURRENT_PROVIDER = localStorage.getItem('provider') || 'openrouter'; // 'openrouter' or 'anthropic'
+// API Configuration - Claude API only
+// API key is loaded from config.js (gitignored)
+const API_MODEL_ANTHROPIC = 'claude-haiku-4-5-20251001';
+const CLSI_PROXY = 'http://localhost:3014'; // Proxy for CORS and LaTeX compilation
 
-const API_MODEL_OPENROUTER = 'google/gemini-2.0-flash-exp:free';
-const API_MODEL_ANTHROPIC = 'claude-3-5-sonnet-20240620';
-const API_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // State
 let worksheetState = {
@@ -18,79 +14,24 @@ let worksheetState = {
   history: []
 };
 
-// Initialize Settings
-function initSettings() {
-  const modal = document.getElementById('settings-modal');
-  const settingsBtn = document.getElementById('settings-btn');
-  const closeBtn = document.getElementById('close-settings-btn');
-  const saveBtn = document.getElementById('save-settings-btn');
-  const toggleBtns = document.querySelectorAll('.toggle-btn');
-  const openrouterGroup = document.getElementById('openrouter-group');
-  const anthropicGroup = document.getElementById('anthropic-group');
-  const openrouterInput = document.getElementById('openrouter-key');
-  const anthropicInput = document.getElementById('anthropic-key');
-
-  // Set initial values
-  openrouterInput.value = API_KEY;
-  anthropicInput.value = ANTHROPIC_KEY;
-  updateToggleUI(CURRENT_PROVIDER);
-
-  settingsBtn.addEventListener('click', () => {
-    modal.classList.remove('hidden');
-    // Small delay to allow display:flex to apply before opacity transition
-    setTimeout(() => modal.classList.add('visible'), 10);
-  });
-
-  closeBtn.addEventListener('click', () => {
-    modal.classList.remove('visible');
-    setTimeout(() => modal.classList.add('hidden'), 300);
-  });
-
-  toggleBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const provider = btn.dataset.provider;
-      updateToggleUI(provider);
-    });
-  });
-
-  saveBtn.addEventListener('click', () => {
-    API_KEY = openrouterInput.value.trim();
-    ANTHROPIC_KEY = anthropicInput.value.trim();
-
-    localStorage.setItem('openrouter_key', API_KEY);
-    localStorage.setItem('anthropic_key', ANTHROPIC_KEY);
-    localStorage.setItem('provider', CURRENT_PROVIDER);
-
-    modal.classList.remove('visible');
-    setTimeout(() => modal.classList.add('hidden'), 300);
-
-    // Show success toast (optional)
-    alert('Settings saved!');
-  });
-
-  function updateToggleUI(provider) {
-    CURRENT_PROVIDER = provider;
-    toggleBtns.forEach(btn => {
-      if (btn.dataset.provider === provider) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-
-    if (provider === 'openrouter') {
-      openrouterGroup.classList.remove('hidden');
-      anthropicGroup.classList.add('hidden');
-    } else {
-      openrouterGroup.classList.add('hidden');
-      anthropicGroup.classList.remove('hidden');
-    }
-  }
-}
-
 // Page load animations and initialization
 document.addEventListener('DOMContentLoaded', () => {
-  initSettings();
+  // Global error handler
+  window.addEventListener('error', (event) => {
+    console.error('Global error caught:', event.error);
+    console.error('Error message:', event.message);
+    console.error('Error stack:', event.error?.stack);
+    // Prevent default to avoid page crash
+    event.preventDefault();
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    console.error('Promise:', event.promise);
+    // Prevent default to avoid page crash
+    event.preventDefault();
+  });
+
   initializeAnimations();
   setupEventListeners();
   checkCLSIService(); // Check connection on load
@@ -396,6 +337,8 @@ async function generateWorksheet() {
   setLoadingState(true);
 
   try {
+    console.log('Starting worksheet generation...');
+
     const systemPrompt = `You are an expert LaTeX worksheet generator. Generate a complete, valid LaTeX document for a worksheet based on the user's requirements. The LaTeX should be ready to compile and should include:
 - Proper document structure with necessary packages
 - Professional formatting
@@ -409,28 +352,42 @@ Generate ONLY the LaTeX code, no explanations or markdown formatting. Start with
     
     Make sure the worksheet is age-appropriate and curriculum-aligned. Include a variety of question types where appropriate.`;
 
+    console.log('Calling API...');
     // Call API with retry logic
     const latexContent = await callAPIWithRetry(systemPrompt, userPrompt);
+    console.log('API call successful, LaTeX received');
 
     worksheetState.currentLaTeX = latexContent;
 
+    console.log('Rendering preview...');
     // Render Preview
     await renderPreview(latexContent);
+    console.log('Preview rendered');
 
     // Enable Chat
     enableChat();
 
     // Add initial AI message
     addChatMessage("I've generated your worksheet! Let me know if you'd like any changes.", 'ai');
+    console.log('Generation complete!');
 
   } catch (error) {
     console.error('Error generating worksheet:', error);
-    addChatMessage("Sorry, I encountered an error generating the worksheet after multiple attempts. Please try again.", 'ai');
-    setLoadingState(false);
+    console.error('Error stack:', error.stack);
+
+    // Make sure we show an error message and don't crash
+    try {
+      addChatMessage(`Sorry, I encountered an error: ${error.message}. Please try again.`, 'ai');
+      setLoadingState(false);
+    } catch (e) {
+      console.error('Error showing error message:', e);
+      alert(`Error generating worksheet: ${error.message}`);
+      setLoadingState(false);
+    }
   }
 }
 
-async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 10) {
+async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 3) {
   let attempts = 0;
 
   while (attempts < maxRetries) {
@@ -466,67 +423,15 @@ async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 10) {
 }
 
 async function callAPI(systemPrompt, userPrompt) {
-  if (CURRENT_PROVIDER === 'anthropic') {
-    try {
-      console.log('Attempting Claude API...');
-      return await callAnthropicAPI(systemPrompt, userPrompt);
-    } catch (error) {
-      console.warn('Claude API failed, falling back to OpenRouter:', error);
-      // Fallback to OpenRouter
-      console.log('Falling back to OpenRouter...');
-    }
-  }
-
-  // OpenRouter Logic
-  console.log('Calling OpenRouter API...');
-  const response = await fetch(`${API_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'WorkNest'
-    },
-    body: JSON.stringify({
-      model: API_MODEL_OPENROUTER,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 4000
-    })
-  });
-
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      throw new Error(`API Authentication Error (${response.status}): Please check your API Key.`);
-    }
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message || 'API Error');
-  }
-
-  if (!data.choices || !data.choices.length) {
-    throw new Error('Invalid API response: No choices returned');
-  }
-
-  let content = data.choices[0].message.content.trim();
-  return cleanLatex(content);
-}
-
-async function callAnthropicAPI(systemPrompt, userPrompt) {
-  const CLSI_PROXY = 'http://localhost:3014'; // Use proxy for CORS
+  console.log('Calling Claude API...');
+  console.log('API Key loaded:', typeof ANTHROPIC_API_KEY !== 'undefined' ? 'Yes' : 'No');
+  console.log('API Key starts with:', ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.substring(0, 15) + '...' : 'undefined');
 
   const response = await fetch(`${CLSI_PROXY}/anthropic`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
+      'x-api-key': ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
@@ -541,25 +446,37 @@ async function callAnthropicAPI(systemPrompt, userPrompt) {
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error(`Claude API Auth Error (${response.status}): Check your Key.`);
+      throw new Error(`Claude API Auth Error (${response.status}): Check your API Key in config.js`);
     }
     const errText = await response.text();
     throw new Error(`Claude API error: ${response.status} - ${errText}`);
   }
 
+  console.log('Response OK, parsing JSON...');
   const data = await response.json();
+  console.log('Response data:', data);
 
   if (data.error) {
+    console.error('API returned error:', data.error);
     throw new Error(data.error.message);
   }
 
   if (!data.content || !data.content.length) {
+    console.error('Invalid response structure:', data);
     throw new Error('Invalid Claude response');
   }
 
+  console.log('Extracting content...');
   let content = data.content[0].text.trim();
-  return cleanLatex(content);
+  console.log('Content length:', content.length);
+  console.log('Content preview:', content.substring(0, 200));
+
+  const cleaned = cleanLatex(content);
+  console.log('Cleaned LaTeX length:', cleaned.length);
+  return cleaned;
 }
+
+// Removed old callAnthropicAPI function - now integrated into callAPI
 
 function cleanLatex(content) {
   content = content.replace(/^```latex\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
@@ -568,6 +485,8 @@ function cleanLatex(content) {
 }
 
 async function renderPreview(latexContent) {
+  console.log('renderPreview called with LaTeX length:', latexContent.length);
+
   const pdfViewer = document.getElementById('pdf-viewer');
   const htmlPreview = document.getElementById('html-preview');
   const loadingState = document.getElementById('loading-state');
@@ -579,16 +498,19 @@ async function renderPreview(latexContent) {
   htmlPreview.classList.add('hidden');
 
   try {
+    console.log('Attempting PDF compilation...');
     // Try CLSI Compilation
     const pdfBlob = await compileLaTeXToPDF(latexContent);
 
     if (pdfBlob) {
+      console.log('PDF compilation successful, displaying...');
       const pdfUrl = URL.createObjectURL(pdfBlob) + '#toolbar=0&navpanes=0&scrollbar=0';
       pdfViewer.src = pdfUrl;
       pdfViewer.classList.remove('hidden');
       loadingState.classList.add('hidden');
       window.currentPdfBlob = pdfBlob;
       downloadBtn.disabled = false;
+      console.log('PDF preview ready');
       return;
     }
   } catch (error) {
@@ -596,15 +518,20 @@ async function renderPreview(latexContent) {
   }
 
   // Fallback to HTML
+  console.log('Using HTML fallback...');
   loadingState.classList.add('hidden');
   htmlPreview.classList.remove('hidden');
   htmlPreview.innerHTML = convertLaTeXToHTML(latexContent);
 
   if (window.MathJax) {
-    window.MathJax.typesetPromise([htmlPreview]);
+    console.log('Typesetting with MathJax...');
+    window.MathJax.typesetPromise([htmlPreview]).catch(err => {
+      console.error('MathJax error:', err);
+    });
   }
 
   downloadBtn.disabled = false; // Allow download (will use html2pdf)
+  console.log('HTML preview ready');
 }
 
 async function compileLaTeXToPDF(latexContent) {
@@ -694,53 +621,11 @@ async function callChatAPI(userMessage) {
   Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
   Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX.substring(0, 500) + '...' : 'None'}`;
 
-  if (CURRENT_PROVIDER === 'anthropic') {
-    try {
-      return await callAnthropicChatAPI(systemPrompt, userMessage);
-    } catch (error) {
-      console.warn('Claude API failed, falling back to OpenRouter:', error);
-      // Fallback to OpenRouter
-    }
-  }
-
-  // OpenRouter Logic
-  const response = await fetch(`${API_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
-    body: JSON.stringify({
-      model: API_MODEL_OPENROUTER,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ]
-    })
-  });
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message || 'API Error');
-  }
-
-  if (!data.choices || !data.choices.length) {
-    throw new Error('Invalid API response: No choices returned');
-  }
-
-  let content = data.choices[0].message.content.trim();
-  return parseChatResponse(content);
-}
-
-async function callAnthropicChatAPI(systemPrompt, userMessage) {
-  const CLSI_PROXY = 'http://localhost:3014';
-
   const response = await fetch(`${CLSI_PROXY}/anthropic`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
+      'x-api-key': ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({

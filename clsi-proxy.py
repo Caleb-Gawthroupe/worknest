@@ -23,7 +23,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
+        self.send_header('Access-Control-Allow-Headers', '*')
         self.send_header('Access-Control-Max-Age', '86400')
         self.end_headers()
     
@@ -37,9 +37,18 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
             # Check if request is for Anthropic
             if self.path.startswith('/anthropic'):
                 url = 'https://api.anthropic.com/v1/messages'
-                # Remove host header to avoid conflicts
-                headers = {k: v for k, v in self.headers.items() if k.lower() not in ['host', 'content-length']}
-                req = urllib.request.Request(url, data=body, method='POST', headers=headers)
+                
+                # Only forward specific headers needed by Anthropic
+                anthropic_headers = {
+                    'content-type': self.headers.get('content-type', 'application/json'),
+                    'x-api-key': self.headers.get('x-api-key', ''),
+                    'anthropic-version': self.headers.get('anthropic-version', '2023-06-01')
+                }
+                
+                # Debug logging
+                print(f"Anthropic request headers: {anthropic_headers}")
+                
+                req = urllib.request.Request(url, data=body, method='POST', headers=anthropic_headers)
                 
                 # Make request with SSL context
                 with urllib.request.urlopen(req, timeout=120, context=ssl_context) as response:
@@ -65,7 +74,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
             self.send_response(e.code)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
+            self.send_header('Access-Control-Allow-Headers', '*')
             self.send_header('Content-Type', e.headers.get('Content-Type', 'application/json'))
             self.end_headers()
             self.wfile.write(e.read())
@@ -83,7 +92,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         self.send_response(response.getcode())
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-api-key, anthropic-version')
+        self.send_header('Access-Control-Allow-Headers', '*')
         self.send_header('Content-Type', response.headers.get('Content-Type', 'application/json'))
         self.end_headers()
         self.wfile.write(response_data)
@@ -91,6 +100,15 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Proxy GET requests to CLSI"""
         try:
+            # Handle root path for connection checks
+            if self.path == '/':
+                self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'ok', 'service': 'CLSI Proxy'}).encode())
+                return
+            
             url = f"{CLSI_URL}{self.path}"
             req = urllib.request.Request(url, method='GET')
             
