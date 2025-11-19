@@ -1,0 +1,242 @@
+/* General layout */
+:root {
+  --primary-color: #7F9EF9;
+  --secondary-color: #E8E8E8;
+  --background-color: #F0FAFC;
+  --shadow-color: #0000001A;
+  --hint-color: #9D9D9D;
+}
+body {
+  background-color: var(--background-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background floating shapes */
+.background-shapes {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.floating-shape {
+  position: absolute;
+  opacity: 0;
+  border-radius: 50%;
+}
+
+.shape-1 {
+  width: 80px;
+  height: 80px;
+  background: var(--primary-color);
+  top: 10%;
+  left: 10%;
+}
+
+.shape-2 {
+  width: 60px;
+  height: 60px;
+  background: var(--primary-color);
+  top: 70%;
+  left: 15%;
+  border-radius: 8px;
+}
+
+.shape-3 {
+  width: 100px;
+  height: 100px;
+  background: var(--primary-color);
+  top: 30%;
+  right: 10%;
+  border-radius: 20px;
+}
+
+.shape-4 {
+  width: 50px;
+  height: 50px;
+  background: var(--primary-color);
+  top: 80%;
+  right: 20%;
+}
+
+.shape-5 {
+  width: 70px;
+  height: 70px;
+  background: var(--primary-color);
+  top: 20%;
+  left: 50%;
+  border-radius: 12px;
+}
+
+.shape-6 {
+  width: 90px;
+  height: 90px;
+  background: var(--primary-color);
+  top: 60%;
+  left: 70%;
+}
+
+/* Name label in top left */
+.name-label {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: var(--primary-color);
+  font-size: 1rem;
+  font-weight: 800;
+  opacity: 0;
+  transform: translateX(-20px);
+  z-index: 10;
+}
+
+.nest-text {
+  color: #000000;
+}
+
+/* Central text */
+.central-text {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  text-align: center;
+  font-weight: bold;
+  font-size: 2.5rem;
+  white-space: nowrap;
+  opacity: 0;
+  transform-origin: center center;
+  z-index: 10;
+}
+
+.header-color {
+  color: var(--primary-color);
+}
+
+.header-black
+ {
+  color: #000000;
+}
+
+/* Input container */
+.input-container {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: 85%;
+  max-width: 700px;
+  min-height: 80px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  z-index: 10;
+}
+
+.bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 48px;
+}
+
+.hint-input {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--secondary-color);
+  font-size: 0.875rem;
+  font-weight: 400;
+  font-family: inherit;
+  width: calc(100% - 100px);
+}
+
+.hint-input::placeholder {
+  color: var(--hint-color);
+}
+
+.hint-input:not(:placeholder-shown) {
+  color: #4b5563;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  background: white;
+  border: 1px solid var(--secondary-color);
+  border-radius: 10px;
+  padding: 6px 12px;
+  color: var(--primary-color);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 100px;
+  width: auto;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+.filter-select:hover {
+  border-color: #9ca3af;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.filter-select option {
+  color: #374151;
+  background: white;
+  padding: 8px 12px;
+}
+
+.arrow-btn {
+  background: white;
+  border: 1px solid var(--secondary-color);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.arrow-icon {
+  color: #6b7280;
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrow-btn:hover {
+  background: var(--secondary-color);
+}

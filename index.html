@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkNest</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+</head>
+<body>
+  <!-- Background floating shapes -->
+  <div class="background-shapes">
+    <div class="floating-shape shape-1"></div>
+    <div class="floating-shape shape-2"></div>
+    <div class="floating-shape shape-3"></div>
+    <div class="floating-shape shape-4"></div>
+    <div class="floating-shape shape-5"></div>
+    <div class="floating-shape shape-6"></div>
+  </div>
+
+  <!-- Name label in top left -->
+  <div class="name-label" id="name-label">Work<span class="nest-text">Nest</span></div>
+
+  <!-- Central text -->
+  <div class="central-text" id="central-text">
+    <span class="header-black">From Idea to</span>
+    <span class="header-color">Classroom.</span>
+  </div>
+
+  <!-- Input container -->
+  <div class="input-container" id="input-container">
+    <input type="text" class="hint-input" placeholder="Describe your worksheet and sit back..." />
+    <div class="bottom-row">
+      <div class="filters">
+        <select class="filter-select">
+          <option value="">Grade</option>
+          <option value="1st">1st Grade</option>
+          <option value="2nd">2nd Grade</option>
+          <option value="3rd">3rd Grade</option>
+          <option value="4th">4th Grade</option>
+          <option value="5th">5th Grade</option>
+          <option value="6th">6th Grade</option>
+          <option value="7th">7th Grade</option>
+          <option value="8th">8th Grade</option>
+          <option value="9th">9th Grade</option>
+          <option value="10th">10th Grade</option>
+          <option value="11th">11th Grade</option>
+          <option value="12th">12th Grade</option>
+        </select>
+        <select class="filter-select">
+          <option value="">Type</option>
+          <option value="Practice">Practice</option>
+          <option value="Quiz">Quiz</option>
+          <option value="Homework">Homework</option>
+          <option value="Review">Review</option>
+          <option value="Test">Test</option>
+        </select>
+        <select class="filter-select">
+          <option value="">Subject</option>
+          <option value="English">English</option>
+          <option value="French">French</option>
+          <option value="Math">Math</option>
+          <option value="Science">Science</option>
+          <option value="History">History</option>
+          <option value="Geography">Geography</option>
+          <option value="Chemistry">Chemistry</option>
+          <option value="Physics">Physics</option>
+          <option value="Biology">Biology</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <button class="arrow-btn">
+        <span class="arrow-icon">›</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
