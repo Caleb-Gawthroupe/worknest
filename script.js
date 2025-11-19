@@ -1,5 +1,5 @@
 // API Configuration
-const API_KEY = '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';
+const API_KEY = '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';
 const API_MODEL = 'google/gemini-2.0-flash-exp:free';
 const API_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -374,6 +374,12 @@ async function callAPIWithRetry(systemPrompt, userPrompt, maxRetries = 10) {
       }
     } catch (error) {
       console.warn(`Attempt ${attempts} failed:`, error);
+
+      // Don't retry on authentication errors
+      if (error.message.includes('API Authentication Error')) {
+        throw error;
+      }
+
       if (attempts >= maxRetries) throw error;
 
       // Wait before retry (exponential backoff with higher initial delay for 429s)
@@ -405,10 +411,22 @@ async function callAPI(systemPrompt, userPrompt) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(`API Authentication Error (${response.status}): Please check your API Key.`);
+    }
     throw new Error(`API error: ${response.status}`);
   }
 
   const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message || 'API Error');
+  }
+
+  if (!data.choices || !data.choices.length) {
+    throw new Error('Invalid API response: No choices returned');
+  }
+
   let content = data.choices[0].message.content.trim();
 
   // Clean up markdown
@@ -561,12 +579,28 @@ async function callChatAPI(userMessage) {
   });
 
   const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message || 'API Error');
+  }
+
+  if (!data.choices || !data.choices.length) {
+    throw new Error('Invalid API response: No choices returned');
+  }
+
   let content = data.choices[0].message.content.trim();
 
+  // Try to parse JSON
   try {
-    content = content.replace(/^```json\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
-    return JSON.parse(content);
+    // Remove markdown code blocks if present
+    const cleanContent = content.replace(/^```json\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
+    return JSON.parse(cleanContent);
   } catch (e) {
+    // If parsing fails, check if it looks like LaTeX
+    if (content.includes('\\documentclass') || content.includes('\\begin{document}')) {
+      return { message: "Here is the updated worksheet.", latex: content };
+    }
+    // Otherwise treat as plain message
     return { message: content, latex: null };
   }
 }
@@ -615,6 +649,10 @@ function downloadPDF() {
     URL.revokeObjectURL(url); // Free memory
   } else {
     // Fallback html2pdf
+    if (typeof html2pdf === 'undefined') {
+      alert('PDF generation library not loaded. Please try again.');
+      return;
+    }
     const element = document.getElementById('html-preview');
     html2pdf().from(element).save('worksheet.pdf');
   }
