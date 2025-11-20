@@ -1,19 +1,15 @@
 # WorkNest 📚✨
 
-**From Idea to Classroom** - An AI-powered worksheet generator that transforms your teaching ideas into professional, ready-to-use educational materials.
-
-WorkNest combines the power of Claude AI with LaTeX typesetting to create beautiful, curriculum-aligned worksheets in seconds. Simply describe what you need, and let AI handle the rest.
+**From Idea to Classroom** - WorkNest is an AI-powered worksheet generator that turns your ideas into ready-to-use materials.
 
 ## 🌟 Features
 
-- **🤖 AI-Powered Generation**: Leverages Claude API to generate educational content tailored to your specifications
-- **📐 Professional LaTeX Typesetting**: Creates publication-quality worksheets with proper mathematical notation
-- **💬 Interactive Editing**: Chat with AI to refine and modify worksheets in real-time
-- **🎓 Grade-Specific Content**: Supports all grade levels from 1st grade through University
-- **📊 Multiple Subjects**: Math, Science, English, History, and more
-- **📝 Various Worksheet Types**: Practice, Quiz, Homework, Review, and Test formats
-- **📄 PDF Export**: Download professional PDFs ready for printing or digital distribution
-- **🎨 Beautiful UI**: Modern, animated interface with smooth transitions and glassmorphism effects
+- ** AI-Powered Generation**: Leverages Claude API to generate educational content tailored to your specifications
+- ** Interactive Editing**: Chat with AI to refine and modify worksheets in real-time
+- ** Grade-Specific Content**: Supports all grade levels from 1st grade through University
+- ** Multiple Subjects**: Math, Science, English, History, and more
+- ** Various Worksheet Types**: Practice, Quiz, Homework, Review, and Test formats
+- ** PDF Export**: Download professional PDFs ready for printing or digital distribution
 
 ## 🚀 Quick Start
 
@@ -70,15 +66,7 @@ Navigate to [http://localhost:8000](http://localhost:8000)
 ```bash
 ./stop_all.sh
 ```
-Note that you need to run 
-```bash
-./setup-clsi.sh
-```
-after using the 
-```bash
-./stop_all.sh
-```
-on reboot sequence.
+Note that you need to re run the setup-clsi after running stop_all on reboot sequence.
 
 ## 📖 How to Use
 
@@ -130,15 +118,6 @@ worknest/
 ├── setup-clsi.sh       # Set up LaTeX compilation service
 └── start-clsi.sh       # Start CLSI service
 ```
-
-### How It Works
-
-1. **User Input**: You describe the worksheet you want
-2. **AI Generation**: Claude API generates complete LaTeX code
-3. **Compilation**: CLSI compiles LaTeX to PDF (or falls back to HTML)
-4. **Preview**: PDF/HTML preview displayed in browser
-5. **Refinement**: Chat with AI to make iterative improvements
-6. **Export**: Download the final worksheet
 
 ### Technology Stack
 
@@ -205,33 +184,9 @@ Click "Check Connection" button. If it stays disconnected:
 
 **⚠️ Never commit your `config.js` file or share your API key publicly!**
 
-## 📝 Examples
-
-### Elementary Math
-```
-"Addition and subtraction practice for 2nd graders with pictures"
-Grade: 2nd | Type: Practice | Subject: Math
-```
-
-### High School Science
-```
-"Chemistry balancing equations worksheet with 15 problems"
-Grade: 10th | Type: Homework | Subject: Chemistry
-```
-
-### University Level
-```
-"Calculus integration by parts problems with step-by-step solutions"
-Grade: University | Type: Practice | Subject: Math
-```
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
@@ -239,16 +194,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Overleaf** for the CLSI LaTeX compilation service
 - **Anime.js** for smooth animations
 - **MathJax** for mathematical typesetting fallback
-
-## 📧 Support
-
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Check existing issues for solutions
-- Review the troubleshooting section above
-
----
-
-**Made with ❤️ for educators everywhere**
-
-*Transform your teaching ideas into professional worksheets in seconds with WorkNest!*
