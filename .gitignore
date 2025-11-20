@@ -3,6 +3,9 @@ config.js
 
 # Logs
 *.log
+clsi_proxy.log
+proxy.log
+server.log
 
 # OS Files
 .DS_Store
