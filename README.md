@@ -22,7 +22,7 @@ WorkNest combines the power of Claude AI with LaTeX typesetting to create beauti
 - **Python 3** - For running the proxy server
 - **Modern Web Browser** - Chrome, Firefox, Safari, or Edge
 - **Anthropic API Key** - [Get one here](https://console.anthropic.com/)
-- **Docker Desktop** (Optional) - For full LaTeX PDF compilation
+- **Docker Desktop** - For full LaTeX PDF compilation
 
 ### Installation
 
