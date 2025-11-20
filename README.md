@@ -4,9 +4,6 @@
 
 WorkNest combines the power of Claude AI with LaTeX typesetting to create beautiful, curriculum-aligned worksheets in seconds. Simply describe what you need, and let AI handle the rest.
 
-![WorkNest Interface](https://img.shields.io/badge/Status-Active-success)
-![License](https://img.shields.io/badge/License-MIT-blue)
-
 ## 🌟 Features
 
 - **🤖 AI-Powered Generation**: Leverages Claude API to generate educational content tailored to your specifications
