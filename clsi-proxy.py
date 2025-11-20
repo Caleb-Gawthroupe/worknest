@@ -47,6 +47,11 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 
                 # Debug logging
                 print(f"Anthropic request headers: {anthropic_headers}")
+                key = anthropic_headers.get('x-api-key', '')
+                print(f"Received API Key length: {len(key)}")
+                if len(key) > 10:
+                    print(f"Key start: {key[:15]}...")
+
                 
                 req = urllib.request.Request(url, data=body, method='POST', headers=anthropic_headers)
                 
