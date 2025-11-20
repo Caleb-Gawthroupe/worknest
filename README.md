@@ -70,6 +70,15 @@ Navigate to [http://localhost:8000](http://localhost:8000)
 ```bash
 ./stop_all.sh
 ```
+Note that you need to run 
+```bash
+./setup-clsi.sh
+```
+after using the 
+```bash
+./stop_all.sh
+```
+on reboot sequence.
 
 ## 📖 How to Use
 
