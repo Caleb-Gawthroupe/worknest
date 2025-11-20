@@ -4,12 +4,12 @@
 
 ## 🌟 Features
 
-- ** AI-Powered Generation**: Leverages Claude API to generate educational content tailored to your specifications
-- ** Interactive Editing**: Chat with AI to refine and modify worksheets in real-time
-- ** Grade-Specific Content**: Supports all grade levels from 1st grade through University
-- ** Multiple Subjects**: Math, Science, English, History, and more
-- ** Various Worksheet Types**: Practice, Quiz, Homework, Review, and Test formats
-- ** PDF Export**: Download professional PDFs ready for printing or digital distribution
+-  AI-Powered Generation**: Leverages Claude API to generate educational content tailored to your specifications
+-  Interactive Editing**: Chat with AI to refine and modify worksheets in real-time
+-  Grade-Specific Content**: Supports all grade levels from 1st grade through University
+-  Multiple Subjects**: Math, Science, English, History, and more
+-  Various Worksheet Types**: Practice, Quiz, Homework, Review, and Test formats
+-  PDF Export**: Download professional PDFs ready for printing or digital distribution
 
 ## 🚀 Quick Start
 
