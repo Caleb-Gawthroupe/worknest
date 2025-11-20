@@ -619,7 +619,7 @@ function addChatMessage(text, sender) {
 async function callChatAPI(userMessage) {
   const systemPrompt = `You are an AI assistant helping to edit a LaTeX worksheet. 
   Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
-  Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX.substring(0, 500) + '...' : 'None'}`;
+  Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX : 'None'}`;
 
   const response = await fetch(`${CLSI_PROXY}/anthropic`, {
     method: 'POST',
