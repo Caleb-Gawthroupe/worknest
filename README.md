@@ -188,7 +188,7 @@ Click "Check Connection" button. If it stays disconnected:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Anthropic** for the Claude API
 - **Overleaf** for the CLSI LaTeX compilation service
