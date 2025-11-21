@@ -11,7 +11,8 @@ let worksheetState = {
   subject: '',
   worksheetType: '',
   currentLaTeX: '',
-  history: []
+  history: [],
+  pdfContext: null // Base64 string of uploaded PDF
 };
 
 // Page load animations and initialization
@@ -198,6 +199,68 @@ function setupEventListeners() {
   if (backBtn) {
     backBtn.addEventListener('click', transitionToHome);
   }
+
+  // Initial File Upload
+  const initialFileInput = document.getElementById('initial-file-input');
+  const initialUploadBtn = document.getElementById('initial-upload-btn');
+  if (initialUploadBtn && initialFileInput) {
+    initialUploadBtn.addEventListener('click', () => initialFileInput.click());
+    initialFileInput.addEventListener('change', (e) => handleFileSelect(e, 'initial'));
+  }
+
+  // Chat File Upload
+  const chatFileInput = document.getElementById('chat-file-input');
+  const chatUploadBtn = document.getElementById('chat-upload-btn');
+  if (chatUploadBtn && chatFileInput) {
+    chatUploadBtn.addEventListener('click', () => chatFileInput.click());
+    chatFileInput.addEventListener('change', (e) => handleFileSelect(e, 'chat'));
+  }
+
+  // Remove File Buttons
+  document.querySelectorAll('.remove-file-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const indicator = e.target.closest('.file-indicator');
+      const isChat = indicator.id === 'chat-file-indicator';
+      clearFileSelection(isChat ? 'chat' : 'initial');
+    });
+  });
+}
+
+function handleFileSelect(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf') {
+    alert('Please select a PDF file.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const base64 = e.target.result.split(',')[1];
+    worksheetState.pdfContext = base64;
+    updateFileIndicator(type, file.name);
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateFileIndicator(type, fileName) {
+  const indicatorId = type === 'initial' ? 'initial-file-indicator' : 'chat-file-indicator';
+  const indicator = document.getElementById(indicatorId);
+  const nameSpan = indicator.querySelector('.file-name');
+
+  nameSpan.textContent = fileName;
+  indicator.classList.remove('hidden');
+}
+
+function clearFileSelection(type) {
+  worksheetState.pdfContext = null;
+
+  const indicatorId = type === 'initial' ? 'initial-file-indicator' : 'chat-file-indicator';
+  const inputId = type === 'initial' ? 'initial-file-input' : 'chat-file-input';
+
+  document.getElementById(indicatorId).classList.add('hidden');
+  document.getElementById(inputId).value = '';
 }
 
 function handleGenerate() {
@@ -346,7 +409,7 @@ async function generateWorksheet() {
 - Answer key section
 - Proper mathematical notation using LaTeX math mode
 
-Generate ONLY the LaTeX code, no explanations or markdown formatting. Start with \\documentclass and end with \\end{document}.`;
+Generate ONLY the raw LaTeX code. Do NOT use markdown code blocks (no \`\`\`latex). Do NOT include any introductory or concluding text. Start immediately with \\documentclass and end with \\end{document}.`;
 
     const userPrompt = `Create a ${worksheetState.worksheetType || 'practice'} for ${worksheetState.gradeLevel || 'general'} ${worksheetState.subject || 'general'} with the following description: "${worksheetState.prompt}".
     
@@ -427,6 +490,31 @@ async function callAPI(systemPrompt, userPrompt) {
   console.log('API Key loaded:', typeof ANTHROPIC_API_KEY !== 'undefined' ? 'Yes' : 'No');
   console.log('API Key starts with:', ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.substring(0, 15) + '...' : 'undefined');
 
+  let messages = [];
+
+  if (worksheetState.pdfContext) {
+    console.log('Attaching PDF context...');
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: worksheetState.pdfContext
+          }
+        },
+        {
+          type: 'text',
+          text: userPrompt
+        }
+      ]
+    });
+  } else {
+    messages.push({ role: 'user', content: userPrompt });
+  }
+
   const response = await fetch(`${CLSI_PROXY}/anthropic`, {
     method: 'POST',
     headers: {
@@ -437,9 +525,7 @@ async function callAPI(systemPrompt, userPrompt) {
     body: JSON.stringify({
       model: API_MODEL_ANTHROPIC,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: userPrompt }
-      ],
+      messages: messages,
       max_tokens: 4000
     })
   });
@@ -479,9 +565,18 @@ async function callAPI(systemPrompt, userPrompt) {
 // Removed old callAnthropicAPI function - now integrated into callAPI
 
 function cleanLatex(content) {
-  content = content.replace(/^```latex\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
-  content = content.replace(/^```tex\n?/g, '').replace(/```$/g, '');
-  return content;
+  // Remove markdown code blocks
+  content = content.replace(/```latex\s*/gi, '').replace(/```tex\s*/gi, '').replace(/```\s*/g, '');
+
+  // Extract content between documentclass and end{document} if present
+  const startMatch = content.indexOf('\\documentclass');
+  const endMatch = content.lastIndexOf('\\end{document}');
+
+  if (startMatch !== -1 && endMatch !== -1) {
+    return content.substring(startMatch, endMatch + 14); // 14 is length of \end{document}
+  }
+
+  return content.trim();
 }
 
 async function renderPreview(latexContent) {
@@ -572,6 +667,7 @@ async function compileLaTeXToPDF(latexContent) {
 function enableChat() {
   document.getElementById('chat-input').disabled = false;
   document.getElementById('send-chat-btn').disabled = false;
+  document.getElementById('chat-upload-btn').disabled = false;
 }
 
 async function sendChatMessage() {
@@ -619,7 +715,37 @@ function addChatMessage(text, sender) {
 async function callChatAPI(userMessage) {
   const systemPrompt = `You are an AI assistant helping to edit a LaTeX worksheet. 
   Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
+  Ensure the 'latex' field contains ONLY raw LaTeX code. Do NOT use markdown code blocks (no \`\`\`latex).
   Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX : 'None'}`;
+
+  let messages = [];
+
+  // If there's a new PDF context uploaded in chat (or carried over and relevant)
+  // For simplicity, we attach it to the current message if it exists in state
+  if (worksheetState.pdfContext) {
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: worksheetState.pdfContext
+          }
+        },
+        {
+          type: 'text',
+          text: userMessage
+        }
+      ]
+    });
+    // Clear context after sending to avoid re-sending large payload? 
+    // Or keep it? Let's keep it in state but maybe UI should clear it.
+    // For now, we send it.
+  } else {
+    messages.push({ role: 'user', content: userMessage });
+  }
 
   const response = await fetch(`${CLSI_PROXY}/anthropic`, {
     method: 'POST',
@@ -631,9 +757,7 @@ async function callChatAPI(userMessage) {
     body: JSON.stringify({
       model: API_MODEL_ANTHROPIC,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: userMessage }
-      ],
+      messages: messages,
       max_tokens: 4000
     })
   });
