@@ -1,4 +1,5 @@
-# WorkNest 📚✨
+# WorkNest 📚✨ 
+BY: Arush and Caleb
 
 **From Idea to Classroom** - WorkNest is an AI-powered worksheet generator that turns your ideas into ready-to-use materials.
 
