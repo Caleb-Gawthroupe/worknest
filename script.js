@@ -224,6 +224,9 @@ function setupEventListeners() {
       clearFileSelection(isChat ? 'chat' : 'initial');
     });
   });
+
+  // Setup Editor
+  setupEditor();
 }
 
 function handleFileSelect(event, type) {
@@ -634,6 +637,7 @@ async function compileLaTeXToPDF(latexContent) {
   const projectId = 'worknest-' + Date.now();
 
   try {
+    console.log('Sending LaTeX to CLSI:', latexContent.substring(0, 100) + '...');
     const response = await fetch(`${CLSI_PROXY}/project/${projectId}/compile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -646,15 +650,24 @@ async function compileLaTeXToPDF(latexContent) {
       })
     });
 
-    if (!response.ok) throw new Error('CLSI compilation failed');
+    if (!response.ok) throw new Error(`CLSI compilation failed with status ${response.status}`);
 
     const result = await response.json();
+    console.log('CLSI Result:', result);
+
     if (result.compile && result.compile.status === 'success') {
       const pdfFile = result.compile.outputFiles.find(f => f.type === 'pdf');
       if (pdfFile) {
         const pdfUrl = `${CLSI_PROXY}${pdfFile.url.replace(/^https?:\/\/[^\/]+/, '')}`;
         const pdfResponse = await fetch(pdfUrl);
         return await pdfResponse.blob();
+      }
+    } else {
+      console.error('CLSI Compilation Error:', result.compile ? result.compile.logs : 'Unknown error');
+      if (result.compile && result.compile.logs) {
+        // Log the first few error lines
+        const errors = result.compile.logs.filter(l => l.type === 'error');
+        console.error('LaTeX Errors:', errors);
       }
     }
   } catch (error) {
@@ -866,4 +879,146 @@ function convertLaTeXToHTML(latex) {
     .replace(/\\item\s+([^\n]+)/g, '<li>$1</li>')
     .replace(/\\\\/g, '<br>');
   return `<div class="latex-content">${html}</div>`;
+}
+
+// Editor Functionality
+function setupEditor() {
+  const modal = document.getElementById('editor-modal');
+  const editBtn = document.getElementById('edit-btn');
+  const closeBtn = document.getElementById('close-editor-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  const applyBtn = document.getElementById('apply-edit-btn');
+  const latexSource = document.getElementById('latex-source');
+  const visualContent = document.getElementById('visual-content');
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panes = document.querySelectorAll('.editor-pane');
+
+  if (!editBtn || !modal) return;
+
+  // Open Editor
+  editBtn.addEventListener('click', () => {
+    if (!worksheetState.currentLaTeX) {
+      alert('No worksheet to edit. Please generate one first.');
+      return;
+    }
+    latexSource.value = worksheetState.currentLaTeX;
+    // Reset to code tab
+    switchTab('code');
+    modal.classList.remove('hidden');
+  });
+
+  // Close/Cancel
+  const closeModal = () => modal.classList.add('hidden');
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+
+  // Apply Changes
+  applyBtn.addEventListener('click', async () => {
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+
+    try {
+      setLoadingState(true);
+      closeModal(); // Close first to show loading on main screen
+
+      let newLatex = '';
+      if (activeTab === 'code') {
+        newLatex = latexSource.value;
+      } else {
+        // Convert Visual -> LaTeX via AI
+        newLatex = await convertHTMLToLaTeX(visualContent.innerHTML);
+      }
+
+      if (newLatex) {
+        worksheetState.currentLaTeX = newLatex;
+        await renderPreview(newLatex);
+        addChatMessage("I've updated the worksheet based on your edits.", 'ai');
+      }
+    } catch (error) {
+      console.error('Error applying edits:', error);
+      alert('Failed to apply changes: ' + error.message);
+      setLoadingState(false);
+      modal.classList.remove('hidden'); // Re-open on error
+    }
+  });
+
+  // Tab Switching
+  tabs.forEach(tab => {
+    tab.addEventListener('click', async () => {
+      const target = tab.dataset.tab;
+      const current = document.querySelector('.tab-btn.active').dataset.tab;
+
+      if (target === current) return;
+
+      // Sync content before switching
+      if (current === 'code' && target === 'visual') {
+        // Code -> Visual (Simple conversion)
+        visualContent.innerHTML = convertLaTeXToHTML(latexSource.value);
+      } else if (current === 'visual' && target === 'code') {
+        // Visual -> Code (AI conversion)
+        const originalText = tab.textContent;
+        tab.textContent = 'Converting...';
+        tab.disabled = true;
+        try {
+          const latex = await convertHTMLToLaTeX(visualContent.innerHTML);
+          latexSource.value = latex;
+          switchTab(target); // Only switch if successful
+        } catch (e) {
+          console.error(e);
+          alert('Conversion failed: ' + e.message);
+        } finally {
+          tab.textContent = originalText;
+          tab.disabled = false;
+        }
+        return; // Handled switch inside try
+      }
+
+      switchTab(target);
+    });
+  });
+
+  function switchTab(tabName) {
+    tabs.forEach(t => {
+      if (t.dataset.tab === tabName) t.classList.add('active');
+      else t.classList.remove('active');
+    });
+
+    panes.forEach(p => {
+      if (p.id === `${tabName}-pane`) p.classList.add('active');
+      else p.classList.remove('active');
+    });
+  }
+
+  // Visual Toolbar
+  document.querySelectorAll('.format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.dataset.cmd;
+      if (cmd === 'h1' || cmd === 'h2' || cmd === 'p') {
+        document.execCommand('formatBlock', false, cmd);
+      } else if (cmd === 'ul') {
+        document.execCommand('insertUnorderedList', false, null);
+      } else if (cmd === 'ol') {
+        document.execCommand('insertOrderedList', false, null);
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+      visualContent.focus();
+    });
+  });
+}
+
+async function convertHTMLToLaTeX(html) {
+  const currentLaTeX = worksheetState.currentLaTeX || '';
+
+  const systemPrompt = `You are an expert LaTeX editor. The user has edited the worksheet using a visual HTML editor.
+  Your task is to update the original LaTeX code to match the new HTML content.
+  
+  Rules:
+  1. Preserve the original preamble (documentclass, packages, custom commands) from the Original LaTeX.
+  2. Update the document body to reflect the content in the HTML.
+  3. Return ONLY the complete, valid, raw LaTeX code.
+  4. Do not include markdown formatting.`;
+
+  const userPrompt = `Original LaTeX:\n${currentLaTeX}\n\nModified HTML Content:\n${html}`;
+
+  return await callAPIWithRetry(systemPrompt, userPrompt);
 }

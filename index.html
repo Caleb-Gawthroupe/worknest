@@ -144,6 +144,7 @@
         </div>
         <div class="toolbar-right">
           <button class="toolbar-btn" id="check-connection-btn">Check Connection</button>
+          <button class="toolbar-btn" id="edit-btn">Edit</button>
           <button class="toolbar-btn primary" id="download-btn" disabled>Download PDF</button>
         </div>
       </div>
@@ -154,6 +155,60 @@
         </div>
         <iframe id="pdf-viewer" class="pdf-viewer hidden"></iframe>
         <div id="html-preview" class="html-preview hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editor Modal -->
+  <div id="editor-modal" class="editor-modal hidden">
+    <div class="editor-overlay"></div>
+    <div class="editor-container">
+      <div class="editor-header">
+        <div class="editor-title">
+          <h2>Edit Worksheet</h2>
+          <p>Modify the LaTeX code or use the visual editor</p>
+        </div>
+        <div class="editor-tabs">
+          <button class="tab-btn active" data-tab="code">LaTeX Code</button>
+          <button class="tab-btn" data-tab="visual">Visual Editor</button>
+        </div>
+        <button class="close-editor-btn" id="close-editor-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="editor-body">
+        <!-- Code Editor Pane -->
+        <div id="code-pane" class="editor-pane active">
+          <textarea id="latex-source" spellcheck="false" placeholder="Enter LaTeX code here..."></textarea>
+        </div>
+
+        <!-- Visual Editor Pane -->
+        <div id="visual-pane" class="editor-pane">
+          <div class="visual-toolbar">
+            <button class="format-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+            <button class="format-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+            <button class="format-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <div class="separator"></div>
+            <button class="format-btn" data-cmd="h1" title="Heading 1">H1</button>
+            <button class="format-btn" data-cmd="h2" title="Heading 2">H2</button>
+            <button class="format-btn" data-cmd="p" title="Paragraph">P</button>
+            <div class="separator"></div>
+            <button class="format-btn" data-cmd="ul" title="Bullet List">• List</button>
+            <button class="format-btn" data-cmd="ol" title="Numbered List">1. List</button>
+          </div>
+          <div id="visual-content" class="visual-content" contenteditable="true"></div>
+          <div class="visual-notice">
+            <p>Note: Visual edits are converted to LaTeX using AI and may not be 100% precise.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <button class="secondary-btn" id="cancel-edit-btn">Cancel</button>
+        <button class="primary-btn" id="apply-edit-btn">Apply Changes</button>
       </div>
     </div>
   </div>
@@ -171,7 +226,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <script src="config.js"></script>
-  <script src="script.js"></script>
+  <script src="script.js?v=2"></script>
 </body>
 
 </html>
