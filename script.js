@@ -188,11 +188,8 @@ function setupEventListeners() {
     downloadBtn.addEventListener('click', downloadPDF);
   }
 
-  // Check Connection Button
-  const checkConnBtn = document.getElementById('check-connection-btn');
-  if (checkConnBtn) {
-    checkConnBtn.addEventListener('click', checkCLSIService);
-  }
+  // Check Connection Button removed
+
 
   // Back to Home Button
   const backBtn = document.getElementById('back-home-btn');
@@ -322,6 +319,7 @@ function transitionToWorkspace() {
     easing: 'easeOutCubic',
     begin: () => {
       workspaceContainer.classList.add('active');
+      document.body.classList.add('workspace-active'); // Add class to body
     }
   });
 }
@@ -340,6 +338,7 @@ function transitionToHome() {
     complete: () => {
       workspaceContainer.classList.add('hidden');
       workspaceContainer.classList.remove('active');
+      document.body.classList.remove('workspace-active'); // Remove class from body
 
       // Reset Workspace State
       resetWorkspace();
@@ -726,15 +725,62 @@ function addChatMessage(text, sender) {
 }
 
 async function callChatAPI(userMessage) {
-  const systemPrompt = `You are an AI assistant helping to edit a LaTeX worksheet. 
-  Return JSON ONLY: {"message": "friendly explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
-  Ensure the 'latex' field contains ONLY raw LaTeX code. Do NOT use markdown code blocks (no \`\`\`latex).
+  const maxRetries = 3;
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      attempts++;
+      console.log(`Chat API Attempt ${attempts}/${maxRetries}`);
+
+      const response = await _makeChatRequest(userMessage, attempts);
+
+      // Validation
+      if (response.latex) {
+        if (!response.latex.includes('\\documentclass') || !response.latex.includes('\\end{document}')) {
+          console.warn('Chat API returned incomplete LaTeX, retrying...');
+          throw new Error('Incomplete LaTeX response');
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.warn(`Chat Attempt ${attempts} failed:`, error);
+
+      if (attempts >= maxRetries) throw error;
+
+      // Exponential backoff
+      const delay = Math.min(2000 * Math.pow(2, attempts), 10000);
+      console.log(`Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+async function _makeChatRequest(userMessage, attempt = 1) {
+  let systemPrompt = `You are an AI assistant helping to edit a LaTeX worksheet. 
+  Return JSON ONLY: {"message": "brief explanation", "latex": "COMPLETE updated latex code or null if no changes"}.
+  
+  CRITICAL RULES:
+  1. If you provide 'latex', it MUST be the COMPLETE document from \\documentclass to \\end{document}.
+  2. NEVER truncate the LaTeX code.
+  3. NEVER return partial code snippets.
+  4. Ensure the 'latex' field contains ONLY raw LaTeX code. Do NOT use markdown code blocks.
+  5. Keep the "message" field extremely brief (under 20 words) to ensure the full LaTeX fits in the response.
+  
   Current LaTeX: ${worksheetState.currentLaTeX ? worksheetState.currentLaTeX : 'None'}`;
+
+  // If this is a retry, add stronger warnings
+  if (attempt > 1) {
+    systemPrompt += `
+    
+    IMPORTANT: Your previous attempt failed because the LaTeX was incomplete.
+    You MUST provide the FULL LaTeX document. Do not stop in the middle.
+    Ensure you end with \\end{document}.`;
+  }
 
   let messages = [];
 
-  // If there's a new PDF context uploaded in chat (or carried over and relevant)
-  // For simplicity, we attach it to the current message if it exists in state
   if (worksheetState.pdfContext) {
     messages.push({
       role: 'user',
@@ -753,9 +799,6 @@ async function callChatAPI(userMessage) {
         }
       ]
     });
-    // Clear context after sending to avoid re-sending large payload? 
-    // Or keep it? Let's keep it in state but maybe UI should clear it.
-    // For now, we send it.
   } else {
     messages.push({ role: 'user', content: userMessage });
   }
@@ -771,7 +814,7 @@ async function callChatAPI(userMessage) {
       model: API_MODEL_ANTHROPIC,
       system: systemPrompt,
       messages: messages,
-      max_tokens: 4000
+      max_tokens: 8192
     })
   });
 
@@ -801,7 +844,13 @@ function parseChatResponse(content) {
     const cleanContent = content.replace(/^```json\n?/g, '').replace(/^```\n?/g, '').replace(/```$/g, '');
     return JSON.parse(cleanContent);
   } catch (e) {
-    // If parsing fails, check if it looks like LaTeX
+    // If it looks like a JSON object but failed to parse, it's likely truncated/malformed.
+    // We should throw so the retry logic catches it.
+    if (content.trim().startsWith('{')) {
+      throw new Error('Malformed JSON response');
+    }
+
+    // If parsing fails and it's NOT JSON, check if it looks like raw LaTeX
     if (content.includes('\\documentclass') || content.includes('\\begin{document}')) {
       return { message: "Here is the updated worksheet.", latex: content };
     }
